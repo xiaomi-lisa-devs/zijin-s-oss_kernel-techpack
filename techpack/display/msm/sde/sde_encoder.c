@@ -809,6 +809,8 @@ void sde_encoder_set_clone_mode(struct drm_encoder *drm_enc,
 			SDE_DEBUG("enc:%d phys state:%d\n", DRMID(drm_enc), phys->enable_state);
 		}
 	}
+
+	sde_crtc_state->cwb_enc_mask = 0;
 }
 
 static int _sde_encoder_atomic_check_phys_enc(struct sde_encoder_virt *sde_enc,
@@ -917,6 +919,12 @@ static int _sde_encoder_atomic_check_reserve(struct drm_encoder *drm_enc,
 			return ret;
 		}
 
+		/* Skip RM allocation for Primary during CWB usecase */
+		if (!crtc_state->mode_changed && !crtc_state->active_changed &&
+			crtc_state->connectors_changed && (conn_state->crtc ==
+			conn_state->connector->state->crtc))
+			goto skip_reserve;
+
 		/* Reserve dynamic resources, indicating atomic_check phase */
 		ret = sde_rm_reserve(&sde_kms->rm, drm_enc, crtc_state,
 			conn_state, true);
@@ -927,6 +935,7 @@ static int _sde_encoder_atomic_check_reserve(struct drm_encoder *drm_enc,
 			return ret;
 		}
 
+skip_reserve:
 		/**
 		 * Update connector state with the topology selected for the
 		 * resource set validated. Reset the topology if we are
@@ -1721,6 +1730,7 @@ static int _sde_encoder_rc_kickoff(struct drm_encoder *drm_enc,
 
 	if (is_vid_mode && sde_enc->rc_state == SDE_ENC_RC_STATE_IDLE) {
 		sde_encoder_irq_control(drm_enc, true);
+		_sde_encoder_pm_qos_add_request(drm_enc);
 	} else {
 		/* enable all the clks and resources */
 		ret = _sde_encoder_resource_control_helper(drm_enc,
@@ -1959,6 +1969,7 @@ static int _sde_encoder_rc_idle(struct drm_encoder *drm_enc,
 
 	if (is_vid_mode) {
 		sde_encoder_irq_control(drm_enc, false);
+		_sde_encoder_pm_qos_remove_request(drm_enc);
 	} else {
 		/* disable all the clks and resources */
 		_sde_encoder_update_rsc_client(drm_enc, false);
@@ -4273,24 +4284,6 @@ void sde_encoder_helper_get_pp_line_count(struct drm_encoder *drm_enc,
 			}
 		}
 	}
-}
-
-void sde_encoder_helper_get_transfer_time(struct drm_encoder *drm_enc,
-			u32 *transfer_time_us)
-{
-	struct sde_encoder_virt *sde_enc;
-	struct msm_mode_info *info;
-
-	if (!drm_enc || !transfer_time_us) {
-		SDE_ERROR("bad arg: encoder:%d transfer_time:%d\n", !drm_enc,
-				!transfer_time_us);
-		return;
-	}
-
-	sde_enc = to_sde_encoder_virt(drm_enc);
-	info = &sde_enc->mode_info;
-
-	*transfer_time_us = info->mdp_transfer_time_us;
 }
 
 int sde_encoder_helper_reset_mixers(struct sde_encoder_phys *phys_enc,

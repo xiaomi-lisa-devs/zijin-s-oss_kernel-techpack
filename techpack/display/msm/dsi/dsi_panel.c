@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #include <linux/delay.h>
@@ -452,6 +453,9 @@ int dsi_panel_tx_cmd_set(struct dsi_panel *panel,
 			cmds->msg.flags |= MIPI_DSI_MSG_ASYNC_OVERRIDE;
 
 		if (type == DSI_CMD_SET_MI_FLAT_MODE_ON || type == DSI_CMD_SET_MI_FLAT_MODE_OFF)
+			cmds->msg.flags |= MIPI_DSI_MSG_CMD_DMA_SCHED;
+
+		if (panel->mi_cfg.timming_switch_wait_for_te && type == DSI_CMD_SET_TIMING_SWITCH)
 			cmds->msg.flags |= MIPI_DSI_MSG_CMD_DMA_SCHED;
 
 		len = ops->transfer(panel->host, &cmds->msg);
@@ -1786,6 +1790,16 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"mi,mdss-dsi-dc-off-command",
 	"mi,mdss-dsi-timing-switch-dc-lbm-command",
 	"mi,mdss-dsi-timing-switch-dc-hbm-command",
+	"mi,mdss-dsi-gamma-otp-read-pre-command",
+	"mi,mdss-dsi-gamma-otp-read-b8-command",
+	"mi,mdss-dsi-gamma-otp-read-b9-command",
+	"mi,mdss-dsi-gamma-otp-read-ba-command",
+	"mi,mdss-dsi-gamma-otp-read-post-command",
+	"mi,mdss-dsi-gamma-flash-read1-pre-command",
+	"mi,mdss-dsi-gamma-flash-read2-pre-command",
+	"mi,mdss-dsi-gamma-flash-read-f6-command",
+	"mi,mdss-dsi-gamma-flash-read-post-command",
+	"mi,mdss-dsi-gamma-write-command",
 	"mi,mdss-dsi-nolp-command",
 	"mi,mdss-dsi-crc-off-command",
 	"mi,mdss-dsi-local-hbm-normal-white-1000nit-command",
@@ -1823,9 +1837,6 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"mi,mdss-dsi-bic-read-finish-done-command",
 	"mi,mdss-dsi-flat-mode-read-pre-command",
 	"mi,mdss-dsi-pre-doze-to-off-command",
-	"mi,mdss-dsi-timing-switch-gir-command",
-	"mi,mdss-dsi-aod-to-dc-on-command",
-	"mi,mdss-dsi-switch-page4-command",
 	/* xiaomi add end */
 };
 
@@ -1874,6 +1885,16 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"mi,mdss-dsi-dc-of-command-state",
 	"mi,mdss-dsi-timing-switch-dc-lbm-command-state",
 	"mi,mdss-dsi-timing-switch-dc-hbm-command-state",
+	"mi,mdss-dsi-gamma-otp-read-pre-command-state",
+	"mi,mdss-dsi-gamma-otp-read-b8-command-state",
+	"mi,mdss-dsi-gamma-otp-read-b9-command-state",
+	"mi,mdss-dsi-gamma-otp-read-ba-command-state",
+	"mi,mdss-dsi-gamma-otp-read-post-command-state",
+	"mi,mdss-dsi-gamma-flash-read1-pre-command-state",
+	"mi,mdss-dsi-gamma-flash-read2-pre-command-state",
+	"mi,mdss-dsi-gamma-flash-read-f6-command-state",
+	"mi,mdss-dsi-gamma-flash-read-post-command-state",
+	"mi,mdss-dsi-gamma-write-command-state",
 	"mi,mdss-dsi-nolp-command-state",
 	"mi,mdss-dsi-crc-off-command-state",
 	"mi,mdss-dsi-local-hbm-normal-white-1000nit-command-state",
@@ -1911,9 +1932,6 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"mi,mdss-dsi-bic-read-finish-done-command-state",
 	"mi,mdss-dsi-flat-mode-read-pre-command-state",
 	"mi,mdss-dsi-pre-doze-to-off-command-state",
-	"mi,mdss-dsi-timing-switch-gir-command-state",
-	"mi,mdss-dsi-aod-to-dc-on-command-state",
-	"mi,mdss-dsi-switch-page4-command-state",
 	/* xiaomi add end */
 };
 
@@ -2550,40 +2568,6 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel)
 		panel->bl_config.bl_min_level = val;
 	}
 
-#ifdef CONFIG_FACTORY_BUILD
-	rc = utils->read_u32(utils->data, "qcom,mdss-dsi-factory-bl-max-level", &val);
-	if (rc) {
-		rc = 0;
-		rc = utils->read_u32(utils->data, "qcom,mdss-dsi-bl-max-level", &val);
-		if (rc) {
-			DSI_DEBUG("[%s] bl-max-level unspecified, defaulting to max level\n",
-				panel->name);
-			panel->bl_config.bl_max_level = MAX_BL_LEVEL;
-		} else {
-			panel->bl_config.bl_max_level = val;
-		}
-	} else {
-		panel->bl_config.bl_max_level = val;
-	}
-
-	rc = utils->read_u32(utils->data, "qcom,mdss-factory-brightness-max-level",
-		&val);
-	if (rc) {
-		rc = 0;
-		rc = utils->read_u32(utils->data, "qcom,mdss-factory-brightness-max-level",
-			&val);
-		if (rc) {
-			DSI_DEBUG("[%s] brigheness-max-level unspecified, defaulting to 255\n",
-				panel->name);
-			panel->bl_config.brightness_max_level = 255;
-			rc = 0;
-		} else {
-			panel->bl_config.brightness_max_level = val;
-		}
-	} else {
-		panel->bl_config.brightness_max_level = val;
-	}
-#else
 	rc = utils->read_u32(utils->data, "qcom,mdss-dsi-bl-max-level", &val);
 	if (rc) {
 		DSI_DEBUG("[%s] bl-max-level unspecified, defaulting to max level\n",
@@ -2602,17 +2586,6 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel)
 		rc = 0;
 	} else {
 		panel->bl_config.brightness_max_level = val;
-	}
-#endif
-
-	rc = utils->read_u32(utils->data, "qcom,mdss-brightness-init-level",
-		&val);
-	if (rc) {
-		DSI_DEBUG("[%s] brigheness-init-level unspecified, defaulting to max level\n",
-			 panel->name);
-		panel->bl_config.brightness_init_level = panel->bl_config.brightness_max_level;
-	} else {
-		panel->bl_config.brightness_init_level = val;
 	}
 
 	panel->bl_config.bl_inverted_dbv = utils->read_bool(utils->data,
@@ -4905,8 +4878,7 @@ int dsi_panel_switch(struct dsi_panel *panel)
 
 	mutex_lock(&panel->panel_lock);
 
-	if (panel->mi_cfg.dfps_bl_ctrl || panel->mi_cfg.panel_id == 0x4B3800420200
-		|| panel->mi_cfg.gir_enabled)
+	if (panel->mi_cfg.dfps_bl_ctrl || panel->mi_cfg.panel_id == 0x4B3800420200)
 		rc = mi_dsi_fps_switch(panel);
 	else
 		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_TIMING_SWITCH);
@@ -4914,6 +4886,23 @@ int dsi_panel_switch(struct dsi_panel *panel)
 	if (rc)
 		DSI_ERR("[%s] failed to send DSI_CMD_SET_TIMING_SWITCH cmds, rc=%d\n",
 		       panel->name, rc);
+
+	if (panel->mi_cfg.gamma_update_flag) {
+		if (panel->mi_cfg.gamma_cfg.update_done_144hz &&
+			(144 == panel->cur_mode->timing.refresh_rate)) {
+			rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_WRITE_GAMMA);
+			if (rc)
+				DSI_ERR("[%s] failed to send 144HZ GAMMA, rc=%d\n",
+						panel->name, rc);
+		}
+		if (panel->mi_cfg.gamma_cfg.update_done_90hz &&
+			(90 == panel->cur_mode->timing.refresh_rate)) {
+			rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_WRITE_GAMMA);
+			if (rc)
+				DSI_ERR("[%s] failed to send 90HZ GAMMA, rc=%d\n",
+						panel->name, rc);
+		}
+	}
 
 	mutex_unlock(&panel->panel_lock);
 	DISP_UTC_INFO("%s panel: DSI_CMD_SET_TIMING_SWITCH\n", panel->type);
@@ -4958,6 +4947,23 @@ int dsi_panel_enable(struct dsi_panel *panel)
 	else
 		panel->panel_initialized = true;
 
+	if (panel->mi_cfg.gamma_update_flag) {
+		if (panel->mi_cfg.gamma_cfg.update_done_144hz &&
+			(144 == panel->cur_mode->timing.refresh_rate)) {
+			rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_WRITE_GAMMA);
+			if (rc)
+				DSI_ERR("[%s] failed to send 144HZ GAMMA, rc=%d\n",
+						panel->name, rc);
+		}
+		if (panel->mi_cfg.gamma_cfg.update_done_90hz &&
+			(90 == panel->cur_mode->timing.refresh_rate)) {
+			rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_WRITE_GAMMA);
+			if (rc)
+				DSI_ERR("[%s] failed to send 90HZ GAMMA, rc=%d\n",
+						panel->name, rc);
+		}
+	}
+
 	if (panel->mi_cfg.dc_type == 0 && panel->mi_cfg.feature_val[DISP_FEATURE_DC] == FEATURE_ON)
 		mi_dsi_dc_mode_enable(panel, true);
 
@@ -5000,21 +5006,32 @@ int dsi_panel_post_enable(struct dsi_panel *panel)
 error:
 	mutex_unlock(&panel->panel_lock);
 
-	if (panel->mi_cfg.flatmode_update_flag) {
-		rc = mi_dsi_panel_read_and_update_flatmode_param(panel);
-		if (rc) {
-			DSI_ERR("[%s] failed to update flatmode parameter, rc=%d\n",
-				panel->name, rc);
+	if (panel->mi_cfg.gamma_update_flag) {
+		if (!panel->mi_cfg.gamma_cfg.read_done) {
+			rc = mi_dsi_panel_read_gamma_param(panel);
+			if (rc) {
+				DSI_ERR("[%s] failed to read gamma para, rc=%d\n",
+					panel->name, rc);
+			} else {
+				rc = mi_dsi_panel_update_gamma_param(panel);
+				if (rc) {
+					DSI_ERR("[%s] failed to update gamma para, rc=%d\n",
+						panel->name, rc);
+				}
+			}
 		}
 	}
 
-	if (panel->mi_cfg.dc_update_flag) {
-		rc = mi_dsi_panel_read_and_update_dc_param(panel);
-		if (rc) {
-			DSI_ERR("[%s] failed to update DC param, rc=%d\n",
-				panel->name, rc);
+	if (panel->mi_cfg.flatmode_update_flag) {
+		if (!panel->mi_cfg.flatmode_cfg.read_done) {
+			rc = mi_dsi_panel_read_flatmode_param(panel);
+			if (rc) {
+				DSI_ERR("[%s] failed to read flatmode parameter, rc=%d\n",
+					panel->name, rc);
+			}
 		}
 	}
+
 	return rc;
 }
 
@@ -5033,17 +5050,15 @@ int dsi_panel_pre_disable(struct dsi_panel *panel)
 		gpio_set_value(panel->bl_config.en_gpio, 0);
 
 
-	if (panel->mi_cfg.doze_to_off_command_enabled) {
-		if (panel->mi_cfg.is_doze_to_off) {
-			rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_PRE_OFF);
-			if (rc) {
-				DSI_ERR("[%s] failed to send DSI_CMD_SET_PRE_OFF cmds, rc=%d\n",
-					   panel->name, rc);
-				goto error;
-			}
-			panel->mi_cfg.is_doze_to_off = false;
-			DISP_UTC_INFO("%s panel: DSI_CMD_SET_PRE_OFF\n", panel->type);
+	if (panel->mi_cfg.doze_to_off_command_enabled && panel->mi_cfg.is_doze_to_off) {
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_PRE_OFF);
+		if (rc) {
+			DSI_ERR("[%s] failed to send DSI_CMD_SET_PRE_OFF cmds, rc=%d\n",
+				   panel->name, rc);
+			goto error;
 		}
+		panel->mi_cfg.is_doze_to_off = false;
+		DISP_UTC_INFO("%s panel: DSI_CMD_SET_PRE_OFF\n", panel->type);
 	} else {
 		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_PRE_OFF);
 		if (rc) {
@@ -5080,7 +5095,7 @@ int dsi_panel_disable(struct dsi_panel *panel)
 			dsi_pwr_panel_regulator_mode_set(&panel->power_info,
 				"ibb", REGULATOR_MODE_STANDBY);
 
-		if (panel->mi_cfg.panel_id == 0x4B3800420200 &&
+		if (panel->mi_cfg.panel_id == 0x4B394400360200 &&
 			(panel->power_mode == SDE_MODE_DPMS_LP1 ||
 			panel->power_mode == SDE_MODE_DPMS_LP2)) {
 			rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_PRE_DOZE_TO_OFF);

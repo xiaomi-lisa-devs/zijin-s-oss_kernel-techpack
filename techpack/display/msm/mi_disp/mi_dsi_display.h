@@ -30,6 +30,11 @@ int mi_dsi_display_write_mipi_reg(void *display,
 ssize_t mi_dsi_display_read_mipi_reg(void *display,
 			char *buf, size_t size);
 
+int mi_dsi_display_read_gamma_param(void *display);
+
+ssize_t mi_dsi_display_print_gamma_param(void *display,
+			char *buf, size_t size);
+
 ssize_t mi_dsi_display_read_panel_info(void *display,
 			char *buf, size_t size);
 

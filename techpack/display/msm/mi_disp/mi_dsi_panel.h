@@ -27,25 +27,35 @@ enum bkl_dimming_state {
 	STATE_ALL
 };
 
+/* 90Hz gamma and 144Hz gamma info */
+struct gamma_cfg {
+	bool read_done;
+	/* 144Hz gamma info */
+	u8 otp_read_b8[44];
+	u8 otp_read_b9[237];
+	u8 otp_read_ba[63];
+
+	u32 flash_read_total_param;
+	u64 gamma_checksum;
+	u8 flash_gamma_read[346];
+	/* 90Hz gamma info */
+	u8 flash_read_b8[44];
+	u8 flash_read_b9[237];
+	u8 flash_read_ba[63];
+	u8 flash_read_checksum[2];
+
+	int update_b8_index;
+	int update_b9_index;
+	int update_ba_index;
+
+	bool update_done_90hz;
+	bool update_done_144hz;
+};
+
 struct flatmode_cfg {
-	bool update_done;
+	bool read_done;
 	int update_index;
 	u8 flatmode_param[4];
-};
-
-enum dc_lut_state {
-	DC_LUT_60HZ,
-	DC_LUT_120HZ,
-	DC_LUT_MAX
-};
-
-/* Enter/Exit DC_LUT info */
-struct dc_lut_cfg {
-	bool update_done;
-	int dc_on_index[DC_LUT_MAX];
-	int dc_off_index[DC_LUT_MAX];
-	u8 enter_dc_lut[DC_LUT_MAX][75];
-	u8 exit_dc_lut[DC_LUT_MAX][75];
 };
 
 struct lhbm_rgb_cfg {
@@ -96,12 +106,11 @@ struct mi_dsi_panel_cfg {
 	/* indicate refresh frequency Fps gpio */
 	int disp_rate_gpio;
 
+	/* gamma read */
+	bool gamma_update_flag;
+	struct gamma_cfg gamma_cfg;
 	char demura_data[900];
 	struct lhbm_rgb_cfg lhbm_rgb_cfg;
-
-	/* DC_LUT Setting read */
-	bool dc_update_flag;
-	struct dc_lut_cfg dc_cfg;
 
 	/* flatmode read */
 	bool flatmode_update_flag;
@@ -115,6 +124,7 @@ struct mi_dsi_panel_cfg {
 
 	u32 doze_brightness;
 	bool doze_to_off_command_enabled;
+	bool timming_switch_wait_for_te;
 	bool is_doze_to_off;
 	/* Some panel nolp command is different according to current doze brightness set,
 	 * But sometimes doze brightness change to DOZE_TO_NORMAL before nolp. So this
@@ -205,7 +215,6 @@ struct mi_dsi_panel_cfg {
 
 	u32 hbm_backlight_threshold;
 	bool gir_enabled;
-	bool aod_brightness_work_flag;
 };
 
 struct dsi_read_config {
@@ -241,6 +250,13 @@ int mi_dsi_panel_write_mipi_reg(struct dsi_panel *panel,
 			char *buf);
 
 ssize_t mi_dsi_panel_read_mipi_reg(struct dsi_panel *panel,
+			char *buf, size_t size);
+
+int mi_dsi_panel_read_gamma_param(struct dsi_panel *panel);
+
+int mi_dsi_panel_update_gamma_param(struct dsi_panel *panel);
+
+ssize_t mi_dsi_panel_print_gamma_param(struct dsi_panel *panel,
 			char *buf, size_t size);
 
 bool mi_dsi_panel_is_need_tx_cmd(u32 feature_id);
@@ -318,8 +334,6 @@ char *mi_dsi_panel_get_bic_data_info(int * bic_len);
 
 char *mi_dsi_panel_get_bic_reg_data_array(struct dsi_panel *panel);
 
-int mi_dsi_panel_read_and_update_flatmode_param(struct dsi_panel *panel);
-
-int mi_dsi_panel_read_and_update_dc_param(struct dsi_panel *panel);
+int mi_dsi_panel_read_flatmode_param(struct dsi_panel *panel);
 
 #endif /* _MI_DSI_PANEL_H_ */

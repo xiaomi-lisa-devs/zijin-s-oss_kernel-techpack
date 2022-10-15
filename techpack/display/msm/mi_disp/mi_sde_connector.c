@@ -309,7 +309,7 @@ int mi_sde_connector_gir_fence(struct drm_connector *connector)
 		return -EINVAL;
 
 	mi_cfg = &dsi_display->panel->mi_cfg;
-	if ((mi_cfg->gir_enabled == false)
+	if (mi_cfg->gir_enabled == false
 			&& mi_cfg->feature_val[DISP_FEATURE_GIR] == FEATURE_ON) {
 		SDE_ATRACE_BEGIN("DISP_FEATURE_GIR_ON");
 		dsi_panel_tx_cmd_set(dsi_display->panel, DSI_CMD_SET_MI_FLAT_MODE_ON);

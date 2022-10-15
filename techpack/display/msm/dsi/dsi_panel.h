@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #ifndef _DSI_PANEL_H_
@@ -122,7 +123,6 @@ struct dsi_backlight_config {
 	u32 bl_min_level;
 	u32 bl_max_level;
 	u32 brightness_max_level;
-	u32 brightness_init_level;
 	u32 bl_level;
 	u32 bl_scale;
 	u32 bl_scale_sv;

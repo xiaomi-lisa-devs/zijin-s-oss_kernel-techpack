@@ -494,9 +494,11 @@ static int q6afe_load_avcs_modules(int num_modules, u16 port_id,
 						AVS_MODULE_ID_DEPACKETIZER_COP;
 					goto load_unload;
 				}
-				if (format_id == ASM_MEDIA_FMT_LC3) {
+				if (format_id == ASM_MEDIA_FMT_LC3 ||
+				    format_id == ASM_MEDIA_FMT_APTX_ADAPTIVE) {
 					pm[i]->payload->load_unload_info[0].id1 =
 					AVS_MODULE_ID_DEPACKETIZER_COP_V2;
+					goto load_unload;
 				}
 
 				if (format_id == ENC_CODEC_TYPE_LHDC) {
@@ -4413,7 +4415,8 @@ int afe_port_set_mad_type(u16 port_id, enum afe_mad_type mad_type)
 	if (port_id == AFE_PORT_ID_TERTIARY_MI2S_TX ||
 		port_id == AFE_PORT_ID_INT3_MI2S_TX ||
 		port_id == AFE_PORT_ID_TX_CODEC_DMA_TX_3 ||
-		port_id == AFE_PORT_ID_TERTIARY_TDM_TX) {
+		port_id == AFE_PORT_ID_TERTIARY_TDM_TX ||
+		port_id == RT_PROXY_PORT_001_TX) {
 		mad_type = MAD_SW_AUDIO;
 		return 0;
 	}
@@ -4443,7 +4446,8 @@ enum afe_mad_type afe_port_get_mad_type(u16 port_id)
 	if (port_id == AFE_PORT_ID_TERTIARY_MI2S_TX ||
 		port_id == AFE_PORT_ID_INT3_MI2S_TX ||
 		port_id == AFE_PORT_ID_TX_CODEC_DMA_TX_3 ||
-		port_id == AFE_PORT_ID_TERTIARY_TDM_TX)
+		port_id == AFE_PORT_ID_TERTIARY_TDM_TX ||
+		port_id == RT_PROXY_PORT_001_TX)
 		return MAD_SW_AUDIO;
 
 	i = port_id - SLIMBUS_0_RX;
@@ -5222,7 +5226,7 @@ int afe_port_send_logging_cfg(u16 port_id,
 	param_hdr.module_id = AFE_MODULE_AUDIO_DEV_INTERFACE;
 	param_hdr.instance_id = INSTANCE_ID_0;
 	param_hdr.param_id = AFE_PARAM_ID_PORT_DATA_LOGGING_DISABLE;
-	param_hdr.param_size = sizeof(&log_disable);
+	param_hdr.param_size = sizeof(struct afe_param_id_port_data_log_disable_t);
 
 	ret = q6afe_pack_and_set_param_in_band(port_id,
 		q6audio_get_port_index(port_id), param_hdr, (u8*)log_disable);
@@ -6221,11 +6225,12 @@ static int __afe_port_start(u16 port_id, union afe_port_config *afe_config,
 	union afe_port_config port_cfg;
 	struct param_hdr_v3 param_hdr;
 	int ret = 0;
-	int cfg_type;
+	int cfg_type = 0;
 	int index = 0;
 	enum afe_mad_type mad_type;
 	uint16_t port_index;
 	u32 power_mode = 0;
+	u16 i;
 
 	memset(&param_hdr, 0, sizeof(param_hdr));
 	memset(&port_cfg, 0, sizeof(port_cfg));
@@ -6661,8 +6666,21 @@ static int __afe_port_start(u16 port_id, union afe_port_config *afe_config,
 
 
 fail_cmd:
-	if (ret)
+	if (ret) {
 		this_afe.afe_port_start_failed[port_index] = true;
+		if ((codec_format != ASM_MEDIA_FMT_NONE) &&
+			(cfg_type == AFE_PARAM_ID_SLIMBUS_CONFIG)) {
+			if ((q6core_get_avcs_api_version_per_service(
+				APRV2_IDS_SERVICE_ID_ADSP_CORE_V) >= AVCS_API_VERSION_V5)) {
+				for (i = 0; i < MAX_ALLOWED_USE_CASES; i++) {
+					if (pm[i] && pm[i]->port_id == port_id) {
+						q6afe_unload_avcs_modules(port_id, i);
+						break;
+					}
+				}
+			}
+		}
+	}
 	mutex_unlock(&this_afe.afe_cmd_lock);
 	return ret;
 }
@@ -11483,6 +11501,9 @@ static int afe_set_cal_sp_th_vi_cfg(int32_t cal_type, size_t data_size,
 
 	if (cal_data == NULL ||
 	    data_size > sizeof(*cal_data) ||
+	    (data_size < sizeof(cal_data->cal_hdr) +
+		sizeof(cal_data->cal_data) +
+		sizeof(cal_data->cal_info.mode)) ||
 	    this_afe.cal_data[AFE_FB_SPKR_PROT_TH_VI_CAL] == NULL)
 		goto done;
 
@@ -11700,7 +11721,9 @@ static int afe_get_cal_sp_th_vi_param(int32_t cal_type, size_t data_size,
 
 	if (cal_data == NULL ||
 	    data_size > sizeof(*cal_data) ||
-	    data_size < sizeof(cal_data->cal_hdr) ||
+	    (data_size < sizeof(cal_data->cal_hdr) +
+		sizeof(cal_data->cal_data) +
+		sizeof(cal_data->cal_info.mode)) ||
 	    this_afe.cal_data[AFE_FB_SPKR_PROT_TH_VI_CAL] == NULL)
 		return 0;
 
@@ -11729,8 +11752,7 @@ static int afe_get_cal_spv4_ex_vi_ftm_param(int32_t cal_type, size_t data_size,
 	pr_debug("%s: cal_type = %d\n", __func__, cal_type);
 	if (this_afe.cal_data[AFE_FB_SPKR_PROT_V4_EX_VI_CAL] == NULL ||
 	    cal_data == NULL ||
-	    data_size > sizeof(*cal_data) ||
-	    data_size < sizeof(cal_data->cal_hdr))
+	    data_size != sizeof(*cal_data))
 		goto done;
 
 	mutex_lock(&this_afe.cal_data[AFE_FB_SPKR_PROT_V4_EX_VI_CAL]->lock);
@@ -11797,8 +11819,7 @@ static int afe_get_cal_sp_ex_vi_ftm_param(int32_t cal_type, size_t data_size,
 	pr_debug("%s: cal_type = %d\n", __func__, cal_type);
 	if (this_afe.cal_data[AFE_FB_SPKR_PROT_EX_VI_CAL] == NULL ||
 	    cal_data == NULL ||
-	    data_size > sizeof(*cal_data) ||
-	    data_size < sizeof(cal_data->cal_hdr))
+	    data_size != sizeof(*cal_data))
 		goto done;
 
 	mutex_lock(&this_afe.cal_data[AFE_FB_SPKR_PROT_EX_VI_CAL]->lock);

@@ -109,6 +109,7 @@ void cam_req_mgr_process_workq(struct work_struct *w)
 		workq->workq_scheduled_ts,
 		CAM_WORKQ_SCHEDULE_TIME_THRESHOLD);
 	curr_time = ktime_get();
+
 	while (i < CRM_TASK_PRIORITY_MAX) {
 		WORKQ_ACQUIRE_LOCK(workq, flags);
 		while (!list_empty(&workq->task.process_head[i])) {

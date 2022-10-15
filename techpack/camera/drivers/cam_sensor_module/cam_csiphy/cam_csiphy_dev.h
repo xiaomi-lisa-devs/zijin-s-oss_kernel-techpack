@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #ifndef _CAM_CSIPHY_DEV_H_
@@ -35,7 +34,7 @@
 
 #define MAX_LANES                   5
 #define MAX_SETTINGS_PER_LANE       43
-#define MAX_DATA_RATES              4
+#define MAX_DATA_RATES              3
 #define MAX_DATA_RATE_REGS          30
 
 #define CAMX_CSIPHY_DEV_NAME "cam-csiphy-driver"

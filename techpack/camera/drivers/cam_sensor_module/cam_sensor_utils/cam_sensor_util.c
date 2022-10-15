@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #include <linux/kernel.h>
@@ -2408,10 +2407,6 @@ int cam_sensor_util_power_down(struct cam_sensor_power_ctrl_t *ctrl,
 		case SENSOR_CUSTOM_GPIO1:
 		case SENSOR_CUSTOM_GPIO2:
 
-			if (!gpio_num_info) {
-				CAM_ERR(CAM_SENSOR, "failed: No gpio");
-				continue;
-			}
 			if (!gpio_num_info->valid[pd->seq_type])
 				continue;
 

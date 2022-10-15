@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #include <linux/module.h>
@@ -153,12 +152,6 @@ static void cam_csiphy_prgm_cmn_data(
 	for (csiphy_idx = 0; csiphy_idx < MAX_CSIPHY; csiphy_idx++) {
 		csiphybase = g_phy_data[csiphy_idx].base_address;
 		is_3phase = g_phy_data[csiphy_idx].is_3phase;
-
-		if (!csiphybase) {
-			CAM_DBG(CAM_CSIPHY, "CSIPHY: %d is not available in platform",
-				csiphy_idx);
-			continue;
-		}
 
 		for (i = 0; i < size; i++) {
 			csiphy_common_reg =

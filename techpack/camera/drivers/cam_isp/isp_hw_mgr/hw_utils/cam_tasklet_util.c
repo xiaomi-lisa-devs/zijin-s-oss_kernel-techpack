@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2017-2019, 2021 The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
+ *  Copyright (c) 2017-2019, 2021 The Linux Foundation. All rights reserved.
  */
 
 #include <linux/slab.h>
@@ -13,7 +12,6 @@
 #include "cam_irq_controller.h"
 #include "cam_debug_util.h"
 #include "cam_common_util.h"
-
 
 /* Threshold for scheduling delay in ms */
 #define CAM_TASKLET_SCHED_TIME_THRESHOLD        5
@@ -349,6 +347,7 @@ static void cam_tasklet_action(unsigned long data)
 			"Tasklet execution",
 			curr_time,
 			CAM_TASKLET_EXE_TIME_THRESHOLD);
+
 		cam_tasklet_put_cmd(tasklet_info, (void **)(&tasklet_cmd));
 	}
 }

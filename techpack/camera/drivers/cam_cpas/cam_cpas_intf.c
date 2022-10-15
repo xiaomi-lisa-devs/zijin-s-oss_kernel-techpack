@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #include <linux/of.h>
@@ -692,7 +691,7 @@ static int cam_cpas_subdev_open(struct v4l2_subdev *sd,
 	return 0;
 }
 
-static int __cam_cpas_subdev_close(struct v4l2_subdev *sd,
+static int cam_cpas_subdev_close(struct v4l2_subdev *sd,
 	struct v4l2_subdev_fh *fh)
 {
 	struct cam_cpas_intf *cpas_intf = v4l2_get_subdevdata(sd);
@@ -703,29 +702,11 @@ static int __cam_cpas_subdev_close(struct v4l2_subdev *sd,
 	}
 
 	mutex_lock(&cpas_intf->intf_lock);
-	if (cpas_intf->open_cnt <= 0) {
-		CAM_WARN(CAM_CPAS, "device already closed, open_cnt: %d", cpas_intf->open_cnt);
-		mutex_unlock(&cpas_intf->intf_lock);
-		return 0;
-	}
 	cpas_intf->open_cnt--;
 	CAM_DBG(CAM_CPAS, "CPAS Subdev close count %d", cpas_intf->open_cnt);
 	mutex_unlock(&cpas_intf->intf_lock);
 
 	return 0;
-}
-
-static int cam_cpas_subdev_close(struct v4l2_subdev *sd,
-	struct v4l2_subdev_fh *fh)
-{
-	bool crm_active = cam_req_mgr_is_open(CAM_CPAS);
-
-	if (crm_active) {
-		CAM_DBG(CAM_CPAS, "CRM is ACTIVE, close should be from CRM");
-		return 0;
-	}
-
-	return __cam_cpas_subdev_close(sd, fh);
 }
 
 static long cam_cpas_subdev_ioctl(struct v4l2_subdev *sd,
@@ -742,9 +723,6 @@ static long cam_cpas_subdev_ioctl(struct v4l2_subdev *sd,
 	switch (cmd) {
 	case VIDIOC_CAM_CONTROL:
 		rc = cam_cpas_subdev_cmd(cpas_intf, (struct cam_control *) arg);
-		break;
-	case CAM_SD_SHUTDOWN:
-		rc = __cam_cpas_subdev_close(sd, NULL);
 		break;
 	default:
 		CAM_ERR(CAM_CPAS, "Invalid command %d for CPAS!", cmd);
@@ -833,7 +811,6 @@ static int cam_cpas_subdev_register(struct platform_device *pdev)
 	subdev->sd_flags =
 		V4L2_SUBDEV_FL_HAS_DEVNODE | V4L2_SUBDEV_FL_HAS_EVENTS;
 	subdev->ent_function = CAM_CPAS_DEVICE_TYPE;
-	subdev->close_seq_prior = CAM_SD_CLOSE_LOW_PRIORITY;
 
 	rc = cam_register_subdev(subdev);
 	if (rc) {

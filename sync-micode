@@ -1,0 +1,23 @@
+#!/bin/bash
+
+HOME_DIR=$(pwd)
+
+for i in odin-r-oss lisa-r-oss vili-r-oss taoyao-s-oss zijin-s-oss
+do
+    mkdir -p micode/$i
+    cd micode/$i
+
+    # we just need display camera and audio
+    for dir in audio camera display
+    do
+        echo "sync $i techpack/$dir"
+        curl https://codeload.github.com/MiCode/Xiaomi_Kernel_OpenSource/tar.gz/$i -s | \
+            tar -xz --strip=2 Xiaomi_Kernel_OpenSource-$i/techpack/$dir &> /dev/null
+    done
+
+    # commit them
+    git add .
+    git commit -m $i &> /dev/null
+
+    cd $HOME_DIR
+done

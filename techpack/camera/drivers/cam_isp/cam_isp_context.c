@@ -865,6 +865,18 @@ static int __cam_isp_ctx_handle_buf_done_for_req_list(
 		list_add_tail(&req->list, &ctx->free_req_list);
 		req_isp->reapply = false;
 		req_isp->cdm_reset_before_apply = false;
+		req_isp->num_acked = 0;
+		req_isp->num_deferred_acks = 0;
+		/*
+		 * Only update the process_bubble and bubble_frame_cnt
+		 * when bubble is detected on this req, in case the other
+		 * request is processing bubble.
+		 */
+		if (req_isp->bubble_detected) {
+			atomic_set(&ctx_isp->process_bubble, 0);
+			ctx_isp->bubble_frame_cnt = 0;
+			req_isp->bubble_detected = false;
+		}
 
 		CAM_DBG(CAM_REQ,
 			"Move active request %lld to free list(cnt = %d) [all fences done], ctx %u",
@@ -1913,7 +1925,6 @@ notify_only:
 			if ((!req_isp->bubble_detected) &&
 				(req->request_id > ctx_isp->reported_req_id)) {
 				request_id = req->request_id;
-				ctx_isp->reported_req_id = request_id;
 				__cam_isp_ctx_update_event_record(ctx_isp,
 					CAM_ISP_CTX_EVENT_EPOCH, req);
 				break;
@@ -1922,6 +1933,9 @@ notify_only:
 
 		if (ctx_isp->substate_activated == CAM_ISP_CTX_ACTIVATED_BUBBLE)
 			request_id = 0;
+
+		if (request_id != 0)
+			ctx_isp->reported_req_id = request_id;
 
 		__cam_isp_ctx_send_sof_timestamp(ctx_isp, request_id,
 			CAM_REQ_MGR_SOF_EVENT_SUCCESS);
@@ -2154,6 +2168,7 @@ static int __cam_isp_ctx_epoch_in_applied(struct cam_isp_context *ctx_isp,
 					ctx_isp->frame_id, ctx->ctx_id);
 			}
 		}
+		atomic_set(&ctx_isp->process_bubble, 1);
 	}
 
 	/*
@@ -2389,6 +2404,7 @@ static int __cam_isp_ctx_epoch_in_bubble_applied(
 					ctx_isp->frame_id, ctx->ctx_id);
 			}
 		}
+		atomic_set(&ctx_isp->process_bubble, 1);
 	}
 
 	/*
@@ -5905,6 +5921,12 @@ static int __cam_isp_ctx_handle_irq_in_activated(void *context,
 	return rc;
 }
 
+static int __cam_isp_shutdown_dev(
+	struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
+{
+	return cam_isp_subdev_close_internal(sd, fh);
+}
+
 /* top state machine */
 static struct cam_ctx_ops
 	cam_isp_ctx_top_state_machine[CAM_CTX_STATE_MAX] = {
@@ -5918,6 +5940,7 @@ static struct cam_ctx_ops
 	{
 		.ioctl_ops = {
 			.acquire_dev = __cam_isp_ctx_acquire_dev_in_available,
+			.shutdown_dev = __cam_isp_shutdown_dev,
 		},
 		.crm_ops = {},
 		.irq_ops = NULL,
@@ -5929,6 +5952,7 @@ static struct cam_ctx_ops
 			.release_dev = __cam_isp_ctx_release_dev_in_top_state,
 			.config_dev = __cam_isp_ctx_config_dev_in_acquired,
 			.release_hw = __cam_isp_ctx_release_hw_in_top_state,
+			.shutdown_dev = __cam_isp_shutdown_dev,
 		},
 		.crm_ops = {
 			.link = __cam_isp_ctx_link_in_acquired,
@@ -5948,6 +5972,7 @@ static struct cam_ctx_ops
 			.release_dev = __cam_isp_ctx_release_dev_in_top_state,
 			.config_dev = __cam_isp_ctx_config_dev_in_top_state,
 			.release_hw = __cam_isp_ctx_release_hw_in_top_state,
+			.shutdown_dev = __cam_isp_shutdown_dev,
 		},
 		.crm_ops = {
 			.unlink = __cam_isp_ctx_unlink_in_ready,
@@ -5965,6 +5990,7 @@ static struct cam_ctx_ops
 			.release_dev = __cam_isp_ctx_release_dev_in_activated,
 			.config_dev = __cam_isp_ctx_config_dev_in_flushed,
 			.release_hw = __cam_isp_ctx_release_hw_in_activated,
+			.shutdown_dev = __cam_isp_shutdown_dev,
 		},
 		.crm_ops = {
 			.unlink = __cam_isp_ctx_unlink_in_ready,
@@ -5982,6 +6008,7 @@ static struct cam_ctx_ops
 			.release_dev = __cam_isp_ctx_release_dev_in_activated,
 			.config_dev = __cam_isp_ctx_config_dev_in_top_state,
 			.release_hw = __cam_isp_ctx_release_hw_in_activated,
+			.shutdown_dev = __cam_isp_shutdown_dev,
 		},
 		.crm_ops = {
 			.unlink = __cam_isp_ctx_unlink_in_activated,
@@ -6139,7 +6166,7 @@ static int cam_isp_context_dump_requests(void *data,
 static int cam_isp_context_handle_message(void *context,
 	uint32_t msg_type, uint32_t *data)
 {
-	int                            rc = 0;
+	int                            rc = -EINVAL;
 	struct cam_hw_cmd_args         hw_cmd_args;
 	struct cam_isp_hw_cmd_args     isp_hw_cmd_args;
 	struct cam_context            *ctx = (struct cam_context *)context;

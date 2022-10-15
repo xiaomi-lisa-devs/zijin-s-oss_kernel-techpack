@@ -51,11 +51,7 @@
 #define DRV_NAME "msm-pcm-routing-v2"
 
 #ifdef CONFIG_SND_SOC_TFA9874
-#if defined(CONFIG_TARGET_PRODUCT_TAOYAO)
-#include "codecs/tfa9874/inc/tfa_platform_interface_definition.h"
-#else
 #include "codecs/tfa98xx/inc/tfa_platform_interface_definition.h"
-#endif
 #endif
 
 #if defined(CONFIG_SND_SOC_AW88263S_TDM)
@@ -32888,7 +32884,7 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets[] = {
 		"TX3_CDC_DMA_HOSTLESS Capture", 0, 0, 0, 0),
 	SND_SOC_DAPM_AIF_OUT("TX4_CDC_DMA_UL_US", "ULTRAOUND_HOSTLESS Capture",
 		0, 0, 0, 0),
-#if defined(CONFIG_TARGET_PRODUCT_CETUS)
+#if defined(CONFIG_TARGET_PRODUCT_CETUS) || defined(CONFIG_TARGET_PRODUCT_ARGO)
 	SND_SOC_DAPM_AIF_IN("RX1_CDC_DMA_DL_US", "ULTRAOUND_HOSTLESS Playback",
 		0, 0, 0, 0),
 #elif defined(CONFIG_TARGET_PRODUCT_LISA) || defined(CONFIG_TARGET_PRODUCT_MONA) || defined(CONFIG_TARGET_PRODUCT_ZIJIN)
@@ -41298,9 +41294,7 @@ static const struct snd_soc_dapm_route intercon_mi2s[] = {
 	{"PRI_MI2S_UL_HL", NULL, "PRI_MI2S_TX"},
 	{"SEC_MI2S_UL_HL", NULL, "SEC_MI2S_TX"},
 	{"SEC_MI2S_RX", NULL, "SEC_MI2S_DL_HL"},
-#if !defined(CONFIG_TARGET_PRODUCT_TAOYAO)
 	{"PRI_MI2S_RX", NULL, "PRI_MI2S_DL_HL"},
-#endif
 #if !defined(CONFIG_TARGET_PRODUCT_RENOIR)
 	{"TERT_MI2S_RX", NULL, "TERT_MI2S_DL_HL"},
 #endif

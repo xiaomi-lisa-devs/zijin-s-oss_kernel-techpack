@@ -178,26 +178,17 @@ static int wcd937x_init_reg(struct snd_soc_component *component)
 				0xFF, 0xFA);
 	snd_soc_component_update_bits(component, WCD937X_MICB3_TEST_CTL_1,
 				0xFF, 0xFA);
-	snd_soc_component_update_bits(component, WCD937X_MICB1_TEST_CTL_2,
-				      0x38, 0x00);
-	snd_soc_component_update_bits(component, WCD937X_MICB2_TEST_CTL_2,
-				      0x38, 0x00);
-	snd_soc_component_update_bits(component, WCD937X_MICB3_TEST_CTL_2,
-				      0x38, 0x00);
 	/* Set Bandgap Fine Adjustment to +5mV for Tanggu SMIC part */
-	dev_err(component->dev, "%s enter\n",__func__);
 	if (snd_soc_component_read32(component, WCD937X_DIGITAL_EFUSE_REG_16)
 	    == 0x01) {
 		snd_soc_component_update_bits(component,
 				WCD937X_BIAS_VBG_FINE_ADJ, 0xF0, 0xB0);
-		dev_err(component->dev, "%s wcd937x is smic\n",__func__);
 	} else if (snd_soc_component_read32(component,
 		WCD937X_DIGITAL_EFUSE_REG_16) == 0x02) {
 		snd_soc_component_update_bits(component,
 				WCD937X_HPH_NEW_INT_RDAC_HD2_CTL_L, 0x1F, 0x04);
 		snd_soc_component_update_bits(component,
 				WCD937X_HPH_NEW_INT_RDAC_HD2_CTL_R, 0x1F, 0x04);
-		dev_err(component->dev, "%s wcd937x is not smic\n",__func__);
 	}
 	return 0;
 }
@@ -1638,33 +1629,6 @@ int wcd937x_micbias_control(struct snd_soc_component *component,
 				&wcd937x->mbhc->notifier, post_dapm_off,
 				&wcd937x->mbhc->wcd_mbhc);
 		break;
-	case MICB2_DISABLE:
-		if (wcd937x->micb_ref[micb_index] > 0)
-			wcd937x->micb_ref[micb_index]--;
-		if ((wcd937x->micb_ref[micb_index] == 0) &&
-		    (wcd937x->pullup_ref[micb_index] > 0))
-			snd_soc_component_update_bits(component, micb_reg,
-				0xC0, 0x80);
-		else if ((wcd937x->micb_ref[micb_index] == 0) &&
-			 (wcd937x->pullup_ref[micb_index] == 0)) {
-			if (pre_off_event && wcd937x->mbhc)
-				blocking_notifier_call_chain(
-					&wcd937x->mbhc->notifier, pre_off_event,
-					&wcd937x->mbhc->wcd_mbhc);
-			snd_soc_component_update_bits(component, micb_reg,
-				0xC0, 0x00);
-			if (post_off_event && wcd937x->mbhc)
-				blocking_notifier_call_chain(
-					&wcd937x->mbhc->notifier,
-					post_off_event,
-					&wcd937x->mbhc->wcd_mbhc);
-		}
-		if (is_dapm && post_dapm_off && wcd937x->mbhc)
-			blocking_notifier_call_chain(
-				&wcd937x->mbhc->notifier, post_dapm_off,
-				&wcd937x->mbhc->wcd_mbhc);
-		break;
-
 	};
 
 	dev_dbg(component->dev, "%s: micb_num:%d, micb_ref: %d, pullup_ref: %d\n",

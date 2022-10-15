@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #include "cam_cdm.h"
@@ -71,6 +72,14 @@ static struct cam_cdm_perf_mon_regs cdm_1_0_perf_mon0 = {
 	.perf_mon_2 = 0x11c,
 };
 
+static struct cam_cdm_comp_wait_status cdm_1_0_comp_wait_status0 = {
+	.comp_wait_status = 0x88,
+};
+
+static struct cam_cdm_comp_wait_status cdm_1_0_comp_wait_status1 = {
+	.comp_wait_status = 0x8c,
+};
+
 static struct cam_cdm_common_regs cdm_hw_1_0_cmn_reg_offset = {
 	.cdm_hw_version = 0x0,
 	.cam_version = &cdm_hw_1_0_titan_version,
@@ -100,7 +109,10 @@ static struct cam_cdm_common_regs cdm_hw_1_0_cmn_reg_offset = {
 			&cdm_hw_1_0_bl_pending_req0,
 			NULL,
 		},
-	.comp_wait = { NULL, NULL },
+	.comp_wait = {
+			&cdm_1_0_comp_wait_status0,
+			&cdm_1_0_comp_wait_status1,
+		},
 	.perf_mon = {
 			&cdm_1_0_perf_mon0,
 			NULL,

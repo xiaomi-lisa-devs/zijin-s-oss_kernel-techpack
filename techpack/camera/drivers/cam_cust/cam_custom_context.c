@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #include <linux/debugfs.h>
@@ -1604,19 +1605,6 @@ static int __cam_custom_ctx_apply_default_req(
 	return rc;
 }
 
-static int __cam_custom_ctx_shutdown_dev(
-	struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
-{
-	int rc = -EINVAL;
-
-	if (!sd || !fh) {
-		CAM_ERR(CAM_CUSTOM, "Invalid input pointer");
-		return rc;
-	}
-
-	return cam_custom_subdev_close_internal(sd, fh);
-}
-
 /* top state machine */
 static struct cam_ctx_ops
 	cam_custom_dev_ctx_top_state_machine[CAM_CTX_STATE_MAX] = {
@@ -1631,7 +1619,6 @@ static struct cam_ctx_ops
 		.ioctl_ops = {
 			.acquire_dev =
 				__cam_custom_ctx_acquire_dev_in_available,
-			.shutdown_dev = __cam_custom_ctx_shutdown_dev,
 		},
 		.crm_ops = {},
 		.irq_ops = NULL,
@@ -1643,7 +1630,6 @@ static struct cam_ctx_ops
 			.release_dev = __cam_custom_release_dev_in_acquired,
 			.config_dev = __cam_custom_ctx_config_dev_in_acquired,
 			.release_hw = __cam_custom_ctx_release_hw_in_top_state,
-			.shutdown_dev = __cam_custom_ctx_shutdown_dev,
 		},
 		.crm_ops = {
 			.link = __cam_custom_ctx_link_in_acquired,
@@ -1662,7 +1648,6 @@ static struct cam_ctx_ops
 			.release_dev = __cam_custom_release_dev_in_acquired,
 			.config_dev = __cam_custom_ctx_config_dev,
 			.release_hw = __cam_custom_ctx_release_hw_in_top_state,
-			.shutdown_dev = __cam_custom_ctx_shutdown_dev,
 		},
 		.crm_ops = {
 			.unlink = __cam_custom_ctx_unlink_in_ready,
@@ -1680,7 +1665,6 @@ static struct cam_ctx_ops
 			.config_dev = __cam_custom_ctx_config_dev_in_flushed,
 			.release_hw =
 				__cam_custom_ctx_release_hw_in_activated_state,
-			.shutdown_dev = __cam_custom_ctx_shutdown_dev,
 		},
 		.crm_ops = {
 			.unlink = __cam_custom_ctx_unlink_in_ready,
@@ -1697,7 +1681,6 @@ static struct cam_ctx_ops
 			.config_dev = __cam_custom_ctx_config_dev,
 			.release_hw =
 				__cam_custom_ctx_release_hw_in_activated_state,
-			.shutdown_dev = __cam_custom_ctx_shutdown_dev,
 		},
 		.crm_ops = {
 			.unlink = __cam_custom_ctx_unlink_in_activated,

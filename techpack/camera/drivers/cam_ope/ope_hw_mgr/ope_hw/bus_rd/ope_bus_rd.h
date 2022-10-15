@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #ifndef OPE_BUS_RD_H
@@ -16,7 +17,6 @@
 #include "cam_context.h"
 #include "cam_ope_context.h"
 #include "cam_ope_hw_mgr.h"
-
 
 /**
  * struct ope_bus_rd_cdm_info

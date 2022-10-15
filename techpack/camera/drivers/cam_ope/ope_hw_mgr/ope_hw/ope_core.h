@@ -1,10 +1,12 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #ifndef CAM_OPE_CORE_H
 #define CAM_OPE_CORE_H
+
 
 #include <linux/interrupt.h>
 #include <linux/io.h>
@@ -15,6 +17,9 @@
 #include "cam_cpas_api.h"
 #include "ope_hw.h"
 #include "ope_dev_intf.h"
+
+#define CAM_OPE_HW_MAX_NUM_PID 2
+
 /**
  * struct cam_ope_cpas_vote
  * @ahb_vote: AHB vote info
@@ -78,7 +83,6 @@ struct cam_ope_device_core_info {
 	bool clk_enable;
 	struct cam_ope_set_irq_cb irq_cb;
 };
-
 
 int cam_ope_init_hw(void *device_priv,
 	void *init_hw_args, uint32_t arg_size);

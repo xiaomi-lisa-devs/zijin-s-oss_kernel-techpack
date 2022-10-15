@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #ifndef CAM_A5_SOC_H
@@ -18,7 +19,7 @@ struct a5_ubwc_cfg_ext {
 };
 
 struct a5_soc_info {
-	char *fw_name;
+	const char *fw_name;
 	bool ubwc_config_ext;
 	uint32_t a5_qos_val;
 	union {

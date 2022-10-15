@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2021, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #include <linux/iopoll.h>
@@ -75,7 +76,7 @@ static int cam_csid_ppi_enable_hw(struct cam_csid_ppi_hw  *ppi_hw)
 
 	for (i = 0; i < soc_info->num_clk; i++) {
 		rc = cam_soc_util_clk_enable(soc_info->clk[i],
-			soc_info->clk_name[i], 0);
+			soc_info->clk_name[i], 0, NULL);
 		if (rc)
 			goto clk_disable;
 	}
@@ -366,7 +367,6 @@ irqreturn_t cam_csid_ppi_irq(int irq_num, void *data)
 
 handle_fatal_error:
 	if (fatal_err_detected) {
-		cam_debug_hw_trigger(CAM_ISP);
 		CAM_ERR(CAM_ISP, "PPI: %d irq_status:0x%x",
 			ppi_hw->hw_intf->hw_idx, irq_status);
 		for (i = 0; i < CAM_CSID_PPI_LANES_MAX; i++)

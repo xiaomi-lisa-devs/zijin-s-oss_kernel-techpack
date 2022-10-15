@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #ifndef _CAM_VFE_CAMIF_VER3_H_
@@ -8,6 +9,9 @@
 
 #include "cam_isp_hw.h"
 #include "cam_vfe_top.h"
+
+#define CAM_ISP_PP_INPUT_BAYER_FMT 0
+#define CAM_ISP_PP_INPUT_YUV_FMT 1
 
 struct cam_vfe_camif_ver3_pp_clc_reg {
 	uint32_t     hw_version;

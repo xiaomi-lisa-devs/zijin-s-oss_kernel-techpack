@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #include <linux/of.h>
@@ -244,7 +245,7 @@ static uint32_t *cam_ope_bus_rd_update(struct ope_hw *ope_hw_info,
 			temp = 0;
 			temp |= stripe_io->s_location &
 				rd_res_val_client->stripe_location_mask;
-			temp |=	(io_port_info->pixel_pattern[rsc_type] &
+			temp |= (io_buf->pix_pattern &
 				rd_res_val_client->pix_pattern_mask) <<
 				rd_res_val_client->pix_pattern_shift;
 			temp_reg[count++] = temp;
@@ -871,4 +872,3 @@ int cam_ope_bus_rd_process(struct ope_hw *ope_hw_info,
 
 	return rc;
 }
-

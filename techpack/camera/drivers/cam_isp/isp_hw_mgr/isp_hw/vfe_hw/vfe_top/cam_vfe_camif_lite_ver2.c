@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #include <linux/slab.h>
@@ -427,7 +428,8 @@ static int cam_vfe_camif_lite_cpas_fifo_levels_reg_dump(
 	uint32_t  val;
 
 	if (soc_private->cpas_version == CAM_CPAS_TITAN_175_V120 ||
-		soc_private->cpas_version == CAM_CPAS_TITAN_175_V130) {
+		soc_private->cpas_version == CAM_CPAS_TITAN_175_V130 ||
+		soc_private->cpas_version == CAM_CPAS_TITAN_165_V100) {
 		rc = cam_cpas_reg_read(soc_private->cpas_handle,
 				CAM_CPAS_REG_CAMNOC, 0x3A20, true, &val);
 		if (rc) {

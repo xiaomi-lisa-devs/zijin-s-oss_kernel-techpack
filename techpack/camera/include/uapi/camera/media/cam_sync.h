@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
  * Copyright (c) 2016-2018, 2020 The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #ifndef __UAPI_CAM_SYNC_H__
@@ -66,6 +67,7 @@
 #define CAM_SYNC_ISP_EVENT_BUSIF_OVERFLOW (CAM_SYNC_ISP_EVENT_START + 5)
 #define CAM_SYNC_ISP_EVENT_FLUSH          (CAM_SYNC_ISP_EVENT_START + 6)
 #define CAM_SYNC_ISP_EVENT_HW_STOP        (CAM_SYNC_ISP_EVENT_START + 7)
+#define CAM_SYNC_ISP_EVENT_BAD_FRAME      (CAM_SYNC_ISP_EVENT_START + 8)
 #define CAM_SYNC_ISP_EVENT_END            (CAM_SYNC_ISP_EVENT_START + 50)
 
 /* ICP Sync event reason types */

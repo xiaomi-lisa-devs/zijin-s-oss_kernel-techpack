@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #ifndef CAM_OPE_SOC_H
@@ -8,14 +9,22 @@
 
 #include "cam_soc_util.h"
 
+#define CAM_OPE_HW_MAX_NUM_PID 2
+
 /**
- * struct ope_dev_soc
+ * struct cam_ope_soc_private
  *
- * @hfi_en: HFI enable flag
+ * @hfi_en:  HFI enable flag
+ * @num_pid: OPE number of pids
+ * @pid:     OPE pid value list
  */
-struct ope_dev_soc {
+struct cam_ope_soc_private {
 	uint32_t hfi_en;
+	uint32_t num_pid;
+	uint32_t pid[CAM_OPE_HW_MAX_NUM_PID];
 };
+
+
 
 int cam_ope_init_soc_resources(struct cam_hw_soc_info *soc_info,
 	irq_handler_t ope_irq_handler, void *irq_data);

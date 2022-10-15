@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #ifndef _CAM_CONTEXT_UTILS_H_
@@ -28,7 +29,7 @@ int32_t cam_context_flush_ctx_to_hw(struct cam_context *ctx);
 int32_t cam_context_flush_req_to_hw(struct cam_context *ctx,
 	struct cam_flush_dev_cmd *cmd);
 int32_t cam_context_dump_pf_info_to_hw(struct cam_context *ctx,
-	struct cam_packet *packet, bool *mem_found, bool *ctx_found,
+	struct cam_hw_mgr_dump_pf_data *pf_data, bool *mem_found, bool *ctx_found,
 	uint32_t  *resource_type,
 	struct cam_smmu_pf_info *pf_info);
 int32_t cam_context_dump_hw_acq_info(struct cam_context *ctx);

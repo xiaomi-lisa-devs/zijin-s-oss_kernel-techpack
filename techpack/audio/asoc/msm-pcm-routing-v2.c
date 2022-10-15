@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #include <linux/init.h>
@@ -52,7 +51,11 @@
 #define DRV_NAME "msm-pcm-routing-v2"
 
 #ifdef CONFIG_SND_SOC_TFA9874
+#if defined(CONFIG_TARGET_PRODUCT_TAOYAO)
+#include "codecs/tfa9874/inc/tfa_platform_interface_definition.h"
+#else
 #include "codecs/tfa98xx/inc/tfa_platform_interface_definition.h"
+#endif
 #endif
 
 #if defined(CONFIG_SND_SOC_AW88263S_TDM)
@@ -2417,6 +2420,13 @@ int msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode,
 				&& be_bit_width == 32)
 				bits_per_sample = msm_routing_get_bit_width(
 							SNDRV_PCM_FORMAT_S32_LE);
+
+			if ((acdb_dev_id == 10) &&
+				(fe_dai_app_type_cfg[fedai_id][session_type][i].channel > 2)){
+				channels = fe_dai_app_type_cfg[fedai_id][session_type][i].channel;
+				pr_debug("%s before adm_open change channel to %d!\n"
+					,__func__, channels);
+			}
 			if ((session_type == SESSION_TYPE_TX) &&
 				 (ec_ref_chmix_cfg[fedai_id].output_channel)) {
 				/* per-session ec_ref configuration */
@@ -6154,10 +6164,6 @@ static int get_ec_ref_port_id(int value, int *index)
 		*index = 43;
 		port_id = AFE_PORT_ID_PRIMARY_TDM_TX;
 		break;
-	case 43:
-		*index = 43;
-		port_id = AFE_PORT_ID_QUINARY_MI2S_RX;
-		break;
 	case 44:
 		*index = 44;
 		port_id = RT_PROXY_PORT_001_TX;
@@ -6231,7 +6237,7 @@ static const char *const ec_ref_rx[] = { "None", "SLIM_RX", "I2S_RX",
 	"WSA_CDC_DMA_TX_0", "WSA_CDC_DMA_TX_1", "WSA_CDC_DMA_TX_2",
 	"SLIM_7_RX", "RX_CDC_DMA_RX_0", "RX_CDC_DMA_RX_1", "RX_CDC_DMA_RX_2",
 	"RX_CDC_DMA_RX_3", "TX_CDC_DMA_TX_0", "TERT_TDM_RX_2", "SEC_TDM_TX_0",
-	"DISPLAY_PORT1", "SEN_MI2S_RX", "QUIN_TDM_TX_0", "SENARY_MI2S_TX",
+	"DISPLAY_PORT1", "SEN_MI2S_RX", "TERT_TDM_RX_0","QUIN_TDM_TX_0", "SENARY_MI2S_TX",
 	"PRI_TDM_RX_0", "PRI_TDM_TX_0", "QUIN_MI2S_RX", "AFE_PCM_TX",
 	"PRI_TDM_RX_2", "TERT_TDM_RX_0", "SEC_TDM_TX_1",
 };
@@ -32885,7 +32891,7 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets[] = {
 #if defined(CONFIG_TARGET_PRODUCT_CETUS)
 	SND_SOC_DAPM_AIF_IN("RX1_CDC_DMA_DL_US", "ULTRAOUND_HOSTLESS Playback",
 		0, 0, 0, 0),
-#elif defined(CONFIG_TARGET_PRODUCT_LISA)
+#elif defined(CONFIG_TARGET_PRODUCT_LISA) || defined(CONFIG_TARGET_PRODUCT_MONA) || defined(CONFIG_TARGET_PRODUCT_ZIJIN)
 	SND_SOC_DAPM_AIF_IN("PRI_TDM_RX_1_DL_US", "ULTRAOUND_HOSTLESS Playback",
 		0, 0, 0, 0),
 #else
@@ -34922,6 +34928,10 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets_tdm[] = {
 	SND_SOC_DAPM_MIXER("SEP_TDM_RX_7 Port Mixer", SND_SOC_NOPM, 0, 0,
 	sep_tdm_rx_7_port_mixer_controls,
 	ARRAY_SIZE(sep_tdm_rx_7_port_mixer_controls)),
+#if defined(CONFIG_SND_SOC_TFA9874_DAVI_TDM) || defined(CONFIG_SND_SOC_AW88263S_TDM)
+	SND_SOC_DAPM_MUX(PLATFORM_TDM_RX_VI_FB_MUX_NAME, SND_SOC_NOPM, 0, 0,
+				&tdm_rx_vi_fb_mux),
+#endif
 	SND_SOC_DAPM_MIXER("HSIF0_TDM_RX_0 Port Mixer", SND_SOC_NOPM, 0, 0,
 				hsif0_tdm_rx_0_port_mixer_controls,
 				ARRAY_SIZE(hsif0_tdm_rx_0_port_mixer_controls)),
@@ -34994,10 +35004,6 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets_tdm[] = {
 	SND_SOC_DAPM_MIXER("HSIF2_TDM_RX_7 Port Mixer", SND_SOC_NOPM, 0, 0,
 				hsif2_tdm_rx_7_port_mixer_controls,
 				ARRAY_SIZE(hsif2_tdm_rx_7_port_mixer_controls)),
-#if defined(CONFIG_SND_SOC_TFA9874_DAVI_TDM) || defined(CONFIG_SND_SOC_AW88263S_TDM)
-	SND_SOC_DAPM_MUX(PLATFORM_TDM_RX_VI_FB_MUX_NAME, SND_SOC_NOPM, 0, 0,
-				&tdm_rx_vi_fb_mux),
-#endif
 };
 #endif
 
@@ -40655,6 +40661,14 @@ static const struct snd_soc_dapm_route intercon_tdm[] = {
 	{"SEP_TDM_TX_5", NULL, "BE_IN"},
 	{"SEP_TDM_TX_6", NULL, "BE_IN"},
 	{"SEP_TDM_TX_7", NULL, "BE_IN"},
+
+#if defined(CONFIG_SND_SOC_TFA9874_DAVI_TDM) || defined(CONFIG_SND_SOC_AW88263S_TDM)
+	{PLATFORM_TDM_RX_VI_FB_MUX_NAME, PLATFORM_TDM_RX_VI_FB_TX_MUX_TEXT, PLATFORM_TDM_RX_VI_FB_TX_MUX_TEXT},
+#endif
+
+#if defined(CONFIG_SND_SOC_TFA9874_DAVI_TDM) || defined(CONFIG_SND_SOC_AW88263S_TDM)
+	{PLATFORM_TDM_RX_VI_FB_RX_MUX_TEXT, NULL, PLATFORM_TDM_RX_VI_FB_MUX_NAME},
+#endif
 	{"HSIF0_TDM_TX_0", NULL, "BE_IN"},
 	{"HSIF0_TDM_TX_1", NULL, "BE_IN"},
 	{"HSIF0_TDM_TX_2", NULL, "BE_IN"},
@@ -40679,13 +40693,6 @@ static const struct snd_soc_dapm_route intercon_tdm[] = {
 	{"HSIF2_TDM_TX_5", NULL, "BE_IN"},
 	{"HSIF2_TDM_TX_6", NULL, "BE_IN"},
 	{"HSIF2_TDM_TX_7", NULL, "BE_IN"},
-#if defined(CONFIG_SND_SOC_TFA9874_DAVI_TDM) || defined(CONFIG_SND_SOC_AW88263S_TDM)
-	{PLATFORM_TDM_RX_VI_FB_MUX_NAME, PLATFORM_TDM_RX_VI_FB_TX_MUX_TEXT, PLATFORM_TDM_RX_VI_FB_TX_MUX_TEXT},
-#endif
-
-#if defined(CONFIG_SND_SOC_TFA9874_DAVI_TDM) || defined(CONFIG_SND_SOC_AW88263S_TDM)
-	{PLATFORM_TDM_RX_VI_FB_RX_MUX_TEXT, NULL, PLATFORM_TDM_RX_VI_FB_MUX_NAME},
-#endif
 };
 #endif
 
@@ -41291,7 +41298,9 @@ static const struct snd_soc_dapm_route intercon_mi2s[] = {
 	{"PRI_MI2S_UL_HL", NULL, "PRI_MI2S_TX"},
 	{"SEC_MI2S_UL_HL", NULL, "SEC_MI2S_TX"},
 	{"SEC_MI2S_RX", NULL, "SEC_MI2S_DL_HL"},
+#if !defined(CONFIG_TARGET_PRODUCT_TAOYAO)
 	{"PRI_MI2S_RX", NULL, "PRI_MI2S_DL_HL"},
+#endif
 #if !defined(CONFIG_TARGET_PRODUCT_RENOIR)
 	{"TERT_MI2S_RX", NULL, "TERT_MI2S_DL_HL"},
 #endif
@@ -41698,6 +41707,12 @@ static int msm_pcm_routing_prepare(struct snd_pcm_substream *substream)
 				be_bit_width == 32)
 				bits_per_sample = msm_routing_get_bit_width(
 							SNDRV_PCM_FORMAT_S32_LE);
+			if((acdb_dev_id == 10) &&
+				(fe_dai_app_type_cfg[i][session_type][be_id].channel > 2)){
+				channels = fe_dai_app_type_cfg[i][session_type][be_id].channel;
+				pr_debug("%s before adm_open change channel to %d!\n"
+					,__func__, channels);
+			}
 			copp_idx = adm_open(port_id, path_type,
 					    sample_rate, channels, topology,
 					    fdai->perf_mode, bits_per_sample,

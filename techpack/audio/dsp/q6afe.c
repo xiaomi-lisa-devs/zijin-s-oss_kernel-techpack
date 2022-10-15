@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  */
 #include <linux/slab.h>
 #include <linux/debugfs.h>
@@ -39,7 +38,11 @@
 #endif
 
 #ifdef CONFIG_SND_SOC_TFA9874_FOR_DAVI
+#if defined(CONFIG_TARGET_PRODUCT_TAOYAO)
+#include "../asoc/codecs/tfa9874/inc/tfa_platform_interface_definition.h"
+#else
 #include "../asoc/codecs/tfa98xx/inc/tfa_platform_interface_definition.h"
+#endif
 #endif
 
 #ifdef AUDIO_FORCE_RESTART_ADSP
@@ -494,8 +497,7 @@ static int q6afe_load_avcs_modules(int num_modules, u16 port_id,
 						AVS_MODULE_ID_DEPACKETIZER_COP;
 					goto load_unload;
 				}
-				if (format_id == ASM_MEDIA_FMT_LC3 ||
-				    format_id == ASM_MEDIA_FMT_APTX_ADAPTIVE) {
+				if (format_id == ASM_MEDIA_FMT_LC3) {
 					pm[i]->payload->load_unload_info[0].id1 =
 					AVS_MODULE_ID_DEPACKETIZER_COP_V2;
 					goto load_unload;
@@ -506,7 +508,11 @@ static int q6afe_load_avcs_modules(int num_modules, u16 port_id,
 						AVS_MODULE_ID_DEPACKETIZER_COP_V1;
 					goto load_unload;
 				}
-
+				
+                                if (format_id == ASM_MEDIA_FMT_APTX_ADAPTIVE) {
+					goto load_unload;
+				}
+				
 				pm[i]->payload->load_unload_info[1].module_type =
 						AMDB_MODULE_TYPE_DECODER;
 				pm[i]->payload->load_unload_info[1].id1 =
@@ -1095,7 +1101,7 @@ static int32_t afe_callback(struct apr_client_data *data, void *priv)
 		uint32_t *payload = data->payload;
 		uint32_t param_id;
 		uint32_t param_id_pos = 0;
-#if defined(CONFIG_TARGET_PRODUCT_LISA)
+#if defined(CONFIG_TARGET_PRODUCT_LISA) || defined(CONFIG_TARGET_PRODUCT_MONA) || defined(CONFIG_TARGET_PRODUCT_ZIJIN)
 #else
 #ifdef CONFIG_MSM_CSPL
 		if (crus_afe_callback(data->payload, data->payload_size) == 0)
@@ -6656,7 +6662,7 @@ static int __afe_port_start(u16 port_id, union afe_port_config *afe_config,
 		goto fail_cmd;
 	}
 	ret = afe_send_cmd_port_start(port_id);
-#if defined(CONFIG_TARGET_PRODUCT_LISA)
+#if defined(CONFIG_TARGET_PRODUCT_LISA) || defined(CONFIG_TARGET_PRODUCT_MONA) || defined(CONFIG_TARGET_PRODUCT_ZIJIN)
 #else
 #if CONFIG_MSM_CSPL
 	if (ret == 0)
@@ -9853,7 +9859,7 @@ int afe_close(int port_id)
 	if (ret)
 		pr_err("%s: AFE close failed %d\n", __func__, ret);
 
-#if defined(CONFIG_TARGET_PRODUCT_LISA)
+#if defined(CONFIG_TARGET_PRODUCT_LISA) || defined(CONFIG_TARGET_PRODUCT_MONA) || defined(CONFIG_TARGET_PRODUCT_ZIJIN)
 #else
 #if CONFIG_MSM_CSPL
 	crus_afe_port_close(port_id);

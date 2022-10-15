@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #define DEBUG
@@ -497,7 +496,7 @@ static struct tdm_dev_config pri_tdm_dev_config[MAX_PATH][TDM_PORT_MAX] = {
 	{ /* PRI TDM */
 		{ {0,   4, 0xFFFF} }, /* RX_0 */
 		{ {8,  12, 0xFFFF} }, /* RX_1 */
-#if defined(CONFIG_TARGET_PRODUCT_LISA)
+#if defined(CONFIG_TARGET_PRODUCT_LISA) || defined(CONFIG_TARGET_PRODUCT_MONA) || defined(CONFIG_TARGET_PRODUCT_ZIJIN)
 		{ {0xFFFF} }, /* RX_2 */
 		{ {0xFFFF} }, /* RX_3 */
 #else
@@ -510,7 +509,7 @@ static struct tdm_dev_config pri_tdm_dev_config[MAX_PATH][TDM_PORT_MAX] = {
 		{ {0xFFFF} }, /* RX_7 */
 	},
 	{
-#if defined(CONFIG_TARGET_PRODUCT_LISA)
+#if defined(CONFIG_TARGET_PRODUCT_LISA) || defined(CONFIG_TARGET_PRODUCT_MONA) || defined(CONFIG_TARGET_PRODUCT_ZIJIN)
 		{ {0,   4, 0xFFFF} }, /* TX_0 */
 		{ {8,  12, 0xFFFF} }, /* TX_1 */
 		{ {0xFFFF} }, /* TX_2 */
@@ -4887,7 +4886,7 @@ static int lahaina_tdm_snd_hw_params(struct snd_pcm_substream *substream,
 			__func__, cpu_dai->id);
 		return -EINVAL;
 	}
-#if defined(CONFIG_TARGET_PRODUCT_LISA) || defined(CONFIG_TARGET_PRODUCT_MONA)
+#if defined(CONFIG_TARGET_PRODUCT_LISA) || defined(CONFIG_TARGET_PRODUCT_MONA) || defined(CONFIG_TARGET_PRODUCT_ZIJIN)
 	if (slots == TDM_MAX_SLOTS) {
 		slots = TDM_MAX_SLOTS / 2;
 		pr_debug("%s: dai id = 0x%x update slots = %d\n", __func__, cpu_dai->id, slots);
@@ -6287,7 +6286,7 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 		.ignore_suspend = 1,
 		SND_SOC_DAILINK_REG(tx3_cdcdma_hostless),
 	},
-#if defined(CONFIG_TARGET_PRODUCT_LISA) || defined(CONFIG_TARGET_PRODUCT_MONA)
+#if defined(CONFIG_TARGET_PRODUCT_LISA) || defined(CONFIG_TARGET_PRODUCT_MONA) || defined(CONFIG_TARGET_PRODUCT_ZIJIN)
 	{/* hw:x,32 */
 		.name = "PRI_TDM_TX_0_HOSTLESS",
 		.stream_name = "PRI_TDM_TX_0_HOSTLESS Capture",
@@ -6313,6 +6312,20 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 		.ignore_pmdown_time = 1,
 		SND_SOC_DAILINK_REG(tert_mi2s_tx_hostless),
 	},
+#endif
+#if defined(CONFIG_TARGET_PRODUCT_TAOYAO)
+{/* hw:x,32 */
+  		.name = "Primary MI2S TX_Hostless",
+  		.stream_name = "Primary MI2S_TX Hostless Capture",
+  		.dynamic = 1,
+  		.dpcm_capture = 1,
+  		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+  				SND_SOC_DPCM_TRIGGER_POST},
+  		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+  		.ignore_suspend = 1,
+  		.ignore_pmdown_time = 1,
+  		SND_SOC_DAILINK_REG(pri_mi2s_tx_hostless),
+  	},
 #endif
 };
 
@@ -6652,7 +6665,7 @@ static struct snd_soc_dai_link msm_common_be_dai_links[] = {
 		.ignore_pmdown_time = 1,
 		SND_SOC_DAILINK_REG(pri_tdm_rx_0),
 	},
-#if defined(CONFIG_TARGET_PRODUCT_LISA) || defined(CONFIG_TARGET_PRODUCT_MONA)
+#if defined(CONFIG_TARGET_PRODUCT_LISA) || defined(CONFIG_TARGET_PRODUCT_MONA) || defined(CONFIG_TARGET_PRODUCT_ZIJIN)
 	{
 		.name = LPASS_BE_PRI_TDM_RX_1,
 		.stream_name = "Primary TDM1 Playback",
@@ -8559,8 +8572,16 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		wcd_mbhc_cfg.swap_gnd_mic = msm_swap_gnd_mic;
 	}
 
+#ifdef CONFIG_TARGET_PRODUCT_TAOYAO
+	if (wcd_mbhc_cfg.enable_usbc_analog)
+	{
+		pr_err("%s: Set swap_gnd_mic = msm_usbc_swap_gnd_mic \n");
+		wcd_mbhc_cfg.swap_gnd_mic = msm_usbc_swap_gnd_mic;
+	}
+#else
 	if (wcd_mbhc_cfg.enable_usbc_analog)
 		wcd_mbhc_cfg.swap_gnd_mic = msm_usbc_swap_gnd_mic;
+#endif
 
 	pdata->fsa_handle = of_parse_phandle(pdev->dev.of_node,
 					"fsa4480-i2c-handle", 0);

@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #include <sound/soc.h>
@@ -184,6 +183,11 @@ SND_SOC_DAILINK_DEFS(tx3_cdcdma_hostless,
 
 SND_SOC_DAILINK_DEFS(tert_mi2s_tx_hostless,
 	DAILINK_COMP_ARRAY(COMP_CPU("TERT_MI2S_TX_HOSTLESS")),
+	DAILINK_COMP_ARRAY(COMP_CODEC("snd-soc-dummy", "snd-soc-dummy-dai")),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("msm-pcm-hostless")));
+
+SND_SOC_DAILINK_DEFS(pri_mi2s_tx_hostless,
+	DAILINK_COMP_ARRAY(COMP_CPU("PRI_MI2S_TX_HOSTLESS")),
 	DAILINK_COMP_ARRAY(COMP_CODEC("snd-soc-dummy", "snd-soc-dummy-dai")),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("msm-pcm-hostless")));
 
@@ -495,6 +499,12 @@ SND_SOC_DAILINK_DEFS(tert_tdm_rx_0,
 	DAILINK_COMP_ARRAY(COMP_CODEC("cs35l41.0-0040", "cs35l41.0-0040"),
 			   COMP_CODEC("cs35l41.0-0041", "cs35l41.0-0041")),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("msm-pcm-routing")));
+#elif defined(CONFIG_TARGET_PRODUCT_CS35L41_TDM) && defined(CONFIG_TARGET_PRODUCT_VILI)
+SND_SOC_DAILINK_DEFS(tert_tdm_rx_0,
+	DAILINK_COMP_ARRAY(COMP_CPU("msm-dai-q6-tdm.36896")),
+	DAILINK_COMP_ARRAY(COMP_CODEC("cs35l41.1-0040", "cs35l41.1-0040"),
+			   COMP_CODEC("cs35l41.1-0041", "cs35l41.1-0041")),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("msm-pcm-routing")));
 #elif defined(CONFIG_TARGET_PRODUCT_CS35L41_TDM)
 SND_SOC_DAILINK_DEFS(tert_tdm_rx_0,
 	DAILINK_COMP_ARRAY(COMP_CPU("msm-dai-q6-tdm.36896")),
@@ -519,6 +529,12 @@ SND_SOC_DAILINK_DEFS(tert_tdm_rx_1,
 	DAILINK_COMP_ARRAY(COMP_CPU("msm-dai-q6-tdm.36898")),
 	DAILINK_COMP_ARRAY(COMP_CODEC("cs35l41.0-0040", "cs35l41.0-0040"),
 			   COMP_CODEC("cs35l41.0-0041", "cs35l41.0-0041")),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("msm-pcm-routing")));
+#elif defined(CONFIG_TARGET_PRODUCT_CS35L41_TDM) && defined(CONFIG_TARGET_PRODUCT_VILI)
+SND_SOC_DAILINK_DEFS(tert_tdm_rx_1,
+	DAILINK_COMP_ARRAY(COMP_CPU("msm-dai-q6-tdm.36898")),
+	DAILINK_COMP_ARRAY(COMP_CODEC("cs35l41.1-0040", "cs35l41.1-0040"),
+			   COMP_CODEC("cs35l41.1-0041", "cs35l41.1-0041")),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("msm-pcm-routing")));
 #elif defined(CONFIG_TARGET_PRODUCT_CS35L41_TDM)
 SND_SOC_DAILINK_DEFS(tert_tdm_rx_1,
@@ -1004,10 +1020,19 @@ SND_SOC_DAILINK_DEFS(display_port1,
 	DAILINK_COMP_ARRAY(COMP_CODEC("msm-ext-disp-audio-codec-rx",
 			"msm_dp_audio_codec_rx1_dai")),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("msm-pcm-routing")));
+	
+#if defined(CONFIG_TARGET_PRODUCT_TAOYAO)
+SND_SOC_DAILINK_DEFS(pri_mi2s_rx,
+       DAILINK_COMP_ARRAY(COMP_CPU("msm-dai-q6-mi2s.0")),
+       DAILINK_COMP_ARRAY(COMP_CODEC("tfa98xx.1-0034", "tfa98xx-aif-1-34"),
+                          COMP_CODEC("tfa98xx.1-0035", "tfa98xx-aif-1-35")),
+       DAILINK_COMP_ARRAY(COMP_PLATFORM("msm-pcm-routing")));
+#else
 SND_SOC_DAILINK_DEFS(pri_mi2s_rx,
 	DAILINK_COMP_ARRAY(COMP_CPU("msm-dai-q6-mi2s.0")),
 	DAILINK_COMP_ARRAY(COMP_CODEC("msm-stub-codec.1", "msm-stub-rx")),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("msm-pcm-routing")));
+#endif
 
 SND_SOC_DAILINK_DEFS(pri_mi2s_tx,
 	DAILINK_COMP_ARRAY(COMP_CPU("msm-dai-q6-mi2s.0")),
@@ -1024,7 +1049,7 @@ SND_SOC_DAILINK_DEFS(sec_mi2s_tx,
 	DAILINK_COMP_ARRAY(COMP_CODEC("msm-stub-codec.1", "msm-stub-tx")),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("msm-pcm-routing")));
 
-#if defined(CONFIG_SND_SOC_RENOIR)
+#if defined(CONFIG_TARGET_PRODUCT_RENOIR)
 SND_SOC_DAILINK_DEFS(tert_mi2s_rx,
        DAILINK_COMP_ARRAY(COMP_CPU("msm-dai-q6-mi2s.2")),
        DAILINK_COMP_ARRAY(COMP_CODEC("tfa98xx.1-0034", "tfa98xx-aif-1-34"),
@@ -1035,7 +1060,7 @@ SND_SOC_DAILINK_DEFS(tert_mi2s_rx,
 	DAILINK_COMP_ARRAY(COMP_CPU("msm-dai-q6-mi2s.2")),
 	DAILINK_COMP_ARRAY(COMP_CODEC("msm-stub-codec.1", "msm-stub-rx")),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("msm-pcm-routing")));
-#endif
+#endif	
 
 SND_SOC_DAILINK_DEFS(tert_mi2s_tx,
 	DAILINK_COMP_ARRAY(COMP_CPU("msm-dai-q6-mi2s.2")),

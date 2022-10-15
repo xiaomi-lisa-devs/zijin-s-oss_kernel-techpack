@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  */
 #include <linux/module.h>
 #include <linux/init.h>
@@ -44,9 +43,21 @@
 #define TX_MACRO_ADC_MODE_CFG0_SHIFT 1
 
 #define TX_MACRO_DMIC_UNMUTE_DELAY_MS	40
+
+#if defined(CONFIG_TARGET_PRODUCT_TAOYAO)
+#define TX_MACRO_AMIC_UNMUTE_DELAY_MS	100
+#else
 #define TX_MACRO_AMIC_UNMUTE_DELAY_MS	200
+#endif
+
 #define TX_MACRO_DMIC_HPF_DELAY_MS	200
+#if defined(CONFIG_TARGET_PRODUCT_VILI) || defined(CONFIG_TARGET_PRODUCT_ZIJIN)
+#define TX_MACRO_AMIC_HPF_DELAY_MS	200
+#elif defined(CONFIG_TARGET_PRODUCT_TAOYAO)
+#define TX_MACRO_AMIC_HPF_DELAY_MS	300
+#else
 #define TX_MACRO_AMIC_HPF_DELAY_MS	100
+#endif
 
 struct tx_macro_priv *g_tx_priv;
 
@@ -640,7 +651,9 @@ static int tx_macro_put_dec_enum(struct snd_kcontrol *kcontrol,
 	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
 	unsigned int val = 0;
 	u16 mic_sel_reg = 0;
+#ifndef CONFIG_TARGET_PRODUCT_TAOYAO
 	u16 dmic_clk_reg = 0;
+#endif
 	struct device *tx_dev = NULL;
 	struct tx_macro_priv *tx_priv = NULL;
 
@@ -686,6 +699,12 @@ static int tx_macro_put_dec_enum(struct snd_kcontrol *kcontrol,
 	}
 	if (strnstr(widget->name, "SMIC", strlen(widget->name))) {
 		if (val != 0) {
+#if defined(CONFIG_TARGET_PRODUCT_TAOYAO)
+            snd_soc_component_update_bits(component,
+					mic_sel_reg,
+					1 << 7, 0x0 << 7);
+			dev_dbg(component->dev, "%s: SMIC enter val=%d\n", __func__,val);
+#else
 			if (val < 5) {
 				snd_soc_component_update_bits(component,
 							mic_sel_reg,
@@ -704,6 +723,7 @@ static int tx_macro_put_dec_enum(struct snd_kcontrol *kcontrol,
 					dmic_clk_reg,
 					0x0E, tx_priv->dmic_clk_div << 0x1);
 			}
+#endif
 		}
 	} else {
 		/* DMIC selected */
@@ -1052,6 +1072,13 @@ void bolero_tx_macro_mute_hs(void)
 		return;
 
 	component = g_tx_priv->component;
+
+	if (delayed_work_pending(&g_tx_priv->tx_hs_unmute_dwork)) {
+		dev_err(component->dev, "%s: there is already a work, give up unmute\n",
+				__func__);
+		return;
+	}
+
 	g_tx_priv->reg_before_mute = snd_soc_component_read32(component, reg);
 	dev_info(component->dev, "%s: the reg(%#x) value before mute is: %#x \n",
 			__func__, reg, g_tx_priv->reg_before_mute);
@@ -1158,19 +1185,22 @@ static int tx_macro_enable_dec(struct snd_soc_dapm_widget *w,
 				   &tx_priv->tx_mute_dwork[decimator].dwork,
 				   msecs_to_jiffies(unmute_delay));
 		if (tx_priv->tx_hpf_work[decimator].hpf_cut_off_freq !=
-							CF_MIN_3DB_150HZ)
+							CF_MIN_3DB_150HZ){
 			queue_delayed_work(system_freezable_wq,
 				&tx_priv->tx_hpf_work[decimator].dwork,
 				msecs_to_jiffies(hpf_delay));
-		snd_soc_component_update_bits(component,
-				hpf_gate_reg, 0x03, 0x02);
-		if (!is_smic_enabled(component, decimator))
 			snd_soc_component_update_bits(component,
-				hpf_gate_reg, 0x02, 0x00);
-		/*
-		 * 6ms delay is required as per HW spec
-		 */
-		usleep_range(6000, 6010);
+					hpf_gate_reg, 0x03, 0x02);
+			if (!is_smic_enabled(component, decimator))
+				snd_soc_component_update_bits(component,
+					hpf_gate_reg, 0x02, 0x00);
+			/*
+			 * 6ms delay is required as per HW spec
+			 */
+			usleep_range(6000, 6010);
+			snd_soc_component_update_bits(component,
+					hpf_gate_reg, 0x02, 0x00);
+		}
 		/* apply gain after decimator is enabled */
 		reg_val = snd_soc_component_read32(component, tx_gain_ctl_reg);
 		dev_info(component->dev, "%s: the reg(%#x) value before enable dec is: %#x \n",

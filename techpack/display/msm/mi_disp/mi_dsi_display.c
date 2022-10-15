@@ -174,32 +174,6 @@ ssize_t mi_dsi_display_read_mipi_reg(void *display,
 	return ret;
 }
 
-int mi_dsi_display_read_gamma_param(void *display)
-{
-	struct dsi_display *dsi_display = (struct dsi_display *)display;
-	int rc = 0;
-
-	if (!dsi_display) {
-		DISP_ERROR("Invalid display ptr\n");
-		return -EINVAL;
-	}
-
-	rc = mi_dsi_panel_read_gamma_param(dsi_display->panel);
-	if (rc) {
-		DISP_ERROR("Failed to read gamma para, rc=%d\n", rc);
-	}
-
-	return rc;
-}
-
-ssize_t mi_dsi_display_print_gamma_param(void *display,
-			char *buf, size_t size)
-{
-	struct dsi_display *dsi_display = (struct dsi_display *)display;
-
-	return mi_dsi_panel_print_gamma_param(dsi_display->panel, buf, size);
-}
-
 ssize_t mi_dsi_display_read_panel_info(void *display,
 			char *buf, size_t size)
 {
@@ -296,12 +270,12 @@ int mi_dsi_display_set_doze_brightness(void *display,
 
 	c_conn = to_sde_connector(dsi_display->drm_conn);
 
-	mutex_lock(&c_conn->lock);
+	mutex_lock(&dsi_display->display_lock);
 	mi_dsi_acquire_wakelock(dsi_display->panel);
 	ret = mi_dsi_panel_set_doze_brightness(dsi_display->panel,
 				doze_brightness);
 	mi_dsi_release_wakelock(dsi_display->panel);
-	mutex_unlock(&c_conn->lock);
+	mutex_unlock(&dsi_display->display_lock);
 
 	event.disp_id = mi_get_disp_id(dsi_display);
 	event.type = MI_DISP_EVENT_DOZE;
@@ -428,6 +402,7 @@ int mi_dsi_display_set_brightness_clone(void *display,
 	struct dsi_display *dsi_display = (struct dsi_display *)display;
 	int ret = 0;
 	struct disp_event event;
+	struct disp_feature_ctl ctl;
 
 	if (!dsi_display) {
 		DISP_ERROR("Invalid display ptr\n");
@@ -435,9 +410,21 @@ int mi_dsi_display_set_brightness_clone(void *display,
 	}
 
 	dsi_display->panel->mi_cfg.real_brightness_clone = brightness_clone;
-	if (!dsi_display->panel->mi_cfg.thermal_dimming)
-		if (brightness_clone > dsi_display->panel->mi_cfg.thermal_max_brightness_clone)
-			brightness_clone = dsi_display->panel->mi_cfg.thermal_max_brightness_clone;
+	if (!dsi_display->panel->mi_cfg.thermal_dimming) {
+		if (dsi_display->panel->mi_cfg.is_step_hbm) {
+			if (dsi_display->panel->mi_cfg.thermal_max_brightness_clone < 2046) {
+				if (brightness_clone > dsi_display->panel->mi_cfg.thermal_max_brightness_clone)
+					brightness_clone = dsi_display->panel->mi_cfg.thermal_max_brightness_clone;
+			} else if (dsi_display->panel->mi_cfg.thermal_max_brightness_clone == 2046) {
+				ctl.feature_id = DISP_FEATURE_HBM;
+				ctl.feature_val = FEATURE_OFF;
+				ret = mi_dsi_display_set_disp_param(dsi_display, &ctl);
+			}
+		} else {
+			if (brightness_clone > dsi_display->panel->mi_cfg.thermal_max_brightness_clone)
+				brightness_clone = dsi_display->panel->mi_cfg.thermal_max_brightness_clone;
+		}
+	}
 
 	ret = mi_dsi_panel_set_brightness_clone(dsi_display->panel,
 				brightness_clone);
@@ -471,6 +458,8 @@ ssize_t mi_dsi_display_get_hw_vsync_info(void *display,
 
 	return mi_sde_encoder_calc_hw_vsync_info(dsi_display, buf, size);
 }
+
+
 
 int mi_dsi_display_esd_irq_ctrl(struct dsi_display *display,
 			bool enable)
@@ -547,45 +536,6 @@ void mi_dsi_display_update_backlight(struct dsi_display *display)
 	}
 
 	backlight_update_status(c_conn->bl_device);
-}
-
-int mi_dsi_display_read_nvt_bic(void *display)
-{
-	struct dsi_display *dsi_display = (struct dsi_display *)display;
-	int ret = 0;
-
-	if (!dsi_display) {
-		DISP_ERROR("Invalid display ptr\n");
-		return -EINVAL;
-	}
-
-	ret = mi_dsi_panel_read_nvt_bic(dsi_display->panel);
-
-	return ret;
-}
-
-char *mi_dsi_display_get_bic_data_info(void *display, int * bic_len)
-{
-	struct dsi_display *dsi_display = (struct dsi_display *)display;
-
-	if (!dsi_display) {
-		DISP_ERROR("Invalid display ptr\n");
-		return NULL;
-	}
-
-	return mi_dsi_panel_get_bic_data_info(bic_len);
-}
-
-char *mi_dsi_display_get_bic_reg_data_array(void *display)
-{
-	struct dsi_display *dsi_display = (struct dsi_display *)display;
-
-	if (!dsi_display) {
-		DISP_ERROR("Invalid display ptr\n");
-		return NULL;
-	}
-
-	return mi_dsi_panel_get_bic_reg_data_array(dsi_display->panel);
 }
 
 ssize_t mi_dsi_display_cell_id_read(void *display,

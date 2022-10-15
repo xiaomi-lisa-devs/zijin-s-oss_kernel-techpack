@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #define pr_fmt(fmt)	"[drm:%s:%d] " fmt, __func__, __LINE__
@@ -1728,6 +1727,9 @@ static void sde_encoder_phys_wb_disable(struct sde_encoder_phys *phys_enc)
 	}
 
 	if (phys_enc->in_clone_mode) {
+		if (hw_wb->ops.setup_crop)
+			 hw_wb->ops.setup_crop(hw_wb, NULL, false);
+
 		_sde_encoder_phys_wb_setup_cwb(phys_enc, false);
 		_sde_encoder_phys_wb_update_cwb_flush(phys_enc, false);
 		phys_enc->enable_state = SDE_ENC_DISABLING;

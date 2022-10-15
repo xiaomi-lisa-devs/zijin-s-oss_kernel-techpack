@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #include <linux/of_device.h>
@@ -1746,7 +1745,7 @@ static int dsi_message_rx(struct dsi_ctrl *dsi_ctrl,
 			  const struct mipi_dsi_msg *msg,
 			  u32 *flags)
 {
-	int rc = 0, i = 0;
+	int rc = 0;
 	u32 rd_pkt_size, total_read_len, hw_read_cnt;
 	u32 current_read_len = 0, total_bytes_read = 0;
 	bool short_resp = false;
@@ -1795,12 +1794,6 @@ static int dsi_message_rx(struct dsi_ctrl *dsi_ctrl,
 		if (buffer_sz < 16)
 			buffer_sz = 16;
 	}
-
-	pr_debug("short_resp %d, msg->rx_len %d, rd_pkt_size %u\n",
-			short_resp, (int)msg->rx_len, rd_pkt_size);
-
-	pr_debug("total_read_len %u, buffer_sz %u\n",
-			total_read_len, buffer_sz);
 
 	buff = kzalloc(buffer_sz, GFP_KERNEL);
 	if (!buff) {
@@ -1866,17 +1859,11 @@ static int dsi_message_rx(struct dsi_ctrl *dsi_ctrl,
 	}
 
 	buff = head;
-	pr_debug("==data from hw==\n");
-	for (i = 0; i < buffer_sz; i++)
-		pr_debug("buffer[%d] = %02x\n", i, buff[i]);
 
 	if (hw_read_cnt < 16 && !short_resp)
 		header_offset = (16 - hw_read_cnt);
 	else
 		header_offset = 0;
-
-	pr_debug("hw_read_cnt %d, header_offset %d\n",
-			hw_read_cnt, header_offset);
 
 	/* parse the data read from panel */
 	cmd = buff[header_offset];
@@ -1887,27 +1874,20 @@ static int dsi_message_rx(struct dsi_ctrl *dsi_ctrl,
 		break;
 	case MIPI_DSI_RX_GENERIC_SHORT_READ_RESPONSE_1BYTE:
 	case MIPI_DSI_RX_DCS_SHORT_READ_RESPONSE_1BYTE:
-		pr_debug("short 1 byte read response\n");
 		rc = dsi_parse_short_read1_resp(msg, &buff[header_offset]);
 		break;
 	case MIPI_DSI_RX_GENERIC_SHORT_READ_RESPONSE_2BYTE:
 	case MIPI_DSI_RX_DCS_SHORT_READ_RESPONSE_2BYTE:
-		pr_debug("short 2 byte read response\n");
 		rc = dsi_parse_short_read2_resp(msg, &buff[header_offset]);
 		break;
 	case MIPI_DSI_RX_GENERIC_LONG_READ_RESPONSE:
 	case MIPI_DSI_RX_DCS_LONG_READ_RESPONSE:
-		pr_debug("long read response\n");
 		rc = dsi_parse_long_read_resp(msg, &buff[header_offset]);
 		break;
 	default:
 		DSI_CTRL_WARN(dsi_ctrl, "Invalid response: 0x%x\n", cmd);
 		rc = 0;
 	}
-
-	pr_debug("==data to client==\n");
-	for (i = 0; i < msg->rx_len; i++)
-		pr_debug("rx_buf[%d] = %02x\n", i, ((u8 *)msg->rx_buf)[i]);
 
 error:
 	kfree(buff);

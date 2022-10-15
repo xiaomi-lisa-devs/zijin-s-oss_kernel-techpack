@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #include <linux/list.h>
@@ -1309,6 +1308,8 @@ int dsi_display_set_power(struct drm_connector *connector,
 		return -EINVAL;
 	}
 
+	mutex_lock(&display->display_lock);
+
 	disp_id = mi_get_disp_id(display);
 
 	notify_data.data = &power_mode;
@@ -1343,6 +1344,7 @@ int dsi_display_set_power(struct drm_connector *connector,
 		event.length = sizeof(power_mode);
 		mi_disp_feature_event_notify(&event, (u8 *)&power_mode);
 	default:
+		mutex_unlock(&display->display_lock);
 		return rc;
 	}
 
@@ -1361,6 +1363,8 @@ int dsi_display_set_power(struct drm_connector *connector,
 		event.length = sizeof(power_mode);
 		mi_disp_feature_event_notify(&event, (u8 *)&power_mode);
 	}
+
+	mutex_unlock(&display->display_lock);
 
 	return rc;
 }
@@ -5466,7 +5470,22 @@ int dsi_display_splash_res_cleanup(struct  dsi_display *display)
 
 static int dsi_display_force_update_dsi_clk(struct dsi_display *display)
 {
-	int rc = 0;
+	int rc = 0, i;
+	struct dsi_display_ctrl *ctrl;
+
+	/*
+	 * The force update dsi clock, is the only clock update function that toggles the state of
+	 * DSI clocks without any ref count protection. With the addition of ASYNC command wait,
+	 * there is a need for adding a check for any queued waits before updating these clocks.
+	 */
+	display_for_each_ctrl(i, display) {
+		ctrl = &display->ctrl[i];
+		if (!ctrl->ctrl || !ctrl->ctrl->dma_wait_queued)
+			continue;
+		flush_workqueue(display->dma_cmd_workq);
+		cancel_work_sync(&ctrl->ctrl->dma_cmd_wait);
+		ctrl->ctrl->dma_wait_queued = false;
+	}
 
 	rc = dsi_display_link_clk_force_update_ctrl(display->dsi_clk_handle);
 
@@ -7392,6 +7411,8 @@ int dsi_display_set_mode(struct dsi_display *display,
 	struct dsi_display_mode adj_mode;
 	struct dsi_mode_info timing;
 	struct disp_event event;
+	struct mi_disp_notifier notify_data;
+	int fps;
 
 	if (!display || !mode || !display->panel) {
 		DSI_ERR("Invalid params\n");
@@ -7441,6 +7462,10 @@ int dsi_display_set_mode(struct dsi_display *display,
 	mi_disp_feature_event_notify(&event, (u8 *)&timing.refresh_rate);
 
 	if (display->panel->cur_mode->timing.refresh_rate != timing.refresh_rate) {
+		fps = timing.refresh_rate;
+		notify_data.data = &fps;
+		notify_data.disp_id = mi_get_disp_id(display);
+		mi_disp_notifier_call_chain(MI_DISP_FPS_CHANGE_EVENT, &notify_data);
 		mi_disp_feature_sysfs_notify(event.disp_id, MI_SYSFS_DYNAMIC_FPS);
 	}
 
@@ -8289,28 +8314,42 @@ int dsi_display_enable(struct dsi_display *display)
 		DSI_DEBUG("cont splash enabled, display enable not required\n");
 		dsi_display_panel_id_notification(display);
 
-		rc = mi_dsi_panel_read_gamma_param(display->panel);
-		if (rc) {
-			DSI_ERR("[%s] failed to read gamma para, rc=%d\n",
-				display->name, rc);
-		} else {
-			rc = mi_dsi_panel_update_gamma_param(display->panel);
+		if (mi_get_disp_id(display) == MI_DISP_PRIMARY && display->panel->mi_cfg.panel_id == 0x4B3800420200) {
+			mi_dsi_panel_lhbm_set(display->panel);
+		}
+
+		if (display->panel->mi_cfg.panel_id == 0x4C3900420200){
+			rc = mi_dsi_panel_update_vdc_param(display->panel);
 			if (rc) {
-				DSI_ERR("[%s] failed to update gamma para, rc=%d\n",
+				DSI_ERR("[%s] failed to update vdc_enabled param, rc=%d\n",
+					display->name, rc);
+			}
+		} else if (display->panel->mi_cfg.panel_id == 0x4C3900360200){
+			DSI_ERR("[%s] Not need to update flatmode parameter\n",display->name);
+		} else{
+			rc = mi_dsi_panel_read_and_update_flatmode_param(display->panel);
+			if (rc) {
+				DSI_ERR("[%s] failed to read flatmode param, rc=%d\n",
 					display->name, rc);
 			}
 		}
 
-		if (mi_get_disp_id(display) == MI_DISP_PRIMARY && display->panel->mi_cfg.panel_id == 0x4B3800420200) {
-			if (display->panel->mi_cfg.feature_val[DISP_FEATURE_BIC] == BIC_UPDAT_REG_RIGHT_NOW)
-				mi_dsi_set_bic_reg(display->panel);
-			mi_dsi_panel_lhbm_set(display->panel);
+		rc = dsi_panel_switch(display->panel);
+		if (rc)
+			DSI_ERR("[%s] failed to switch DSI panel mode, rc=%d\n",
+				   display->name, rc);
+
+		rc = mi_dsi_panel_read_and_update_dc_param(display->panel);
+		if (rc) {
+			DSI_ERR("[%s] failed to read DC param, rc=%d\n",
+				display->name, rc);
 		}
 
-		rc = mi_dsi_panel_read_flatmode_param(display->panel);
-		if (rc) {
-			DSI_ERR("[%s] failed to read flatmode param, rc=%d\n",
-				display->name, rc);
+		if (mi_get_disp_id(display) == MI_DISP_PRIMARY && display->panel->mi_cfg.lhbm_update_flag) {
+			rc = mi_dsi_panel_update_lhbm_param(display->panel);
+			if (rc)
+				DSI_ERR("[%s] failed to read lhbm rgb param, rc=%d\n",
+					display->name, rc);
 		}
 
 		return 0;

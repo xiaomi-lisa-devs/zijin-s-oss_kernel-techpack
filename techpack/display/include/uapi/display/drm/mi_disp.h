@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only WITH Linux-syscall-note */
 /*
  * Copyright (c) 2020, The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #ifndef _MI_DISP_H_
@@ -75,15 +74,6 @@ struct disp_brightness_req {
 	__u32 brightness_clone;
 };
 
-struct disp_bic_info_req {
-	struct disp_base base;
-	__u32 type; /* 0 read, 1 write */
-	__u32 bic_len;
-	__u32 bic_reg_len;
-	char __user *bic_ptr;
-	char __user *bic_reg_ptr;
-};
-
 struct disp_panel_info {
 	struct disp_base base;
 	__u32 info_len;
@@ -108,7 +98,6 @@ enum disp_event_type {
     MI_DISP_EVENT_DOZE = 3,
     MI_DISP_EVENT_FPS = 4,
     MI_DISP_EVENT_BRIGHTNESS_CLONE = 5,
-    MI_DISP_EVENT_BIC = 6,
     MI_DISP_EVENT_MAX,
 };
 
@@ -193,15 +182,6 @@ enum spr_render_status {
 	SPR_2D_RENDERING = 2,
 };
 
-enum bic_read_status {
-	BIC_READ_NEED = 1,
-	BIC_READ_FINISHED = 2,
-	BIC_READ_NEED_RIGHT_NOW = 3,
-	BIC_UPDAT_REG_RIGHT_NOW = 4,
-	BIC_UPDATING_REG = 5,
-	BIC_UPDATE_REG_DONE = 6,
-};
-
 enum disp_feature_id {
 	DISP_FEATURE_DIMMING,
 	DISP_FEATURE_HBM,
@@ -222,8 +202,8 @@ enum disp_feature_id {
 	DISP_FEATURE_AOD_TO_NORMAL,
 	DISP_FEATURE_COLOR_INVERT,
 	DISP_FEATURE_DC_BACKLIGHT,
-	DISP_FEATURE_BIC,
 	DISP_FEATURE_GIR,
+	DISP_FEATURE_DBI,
 	DISP_FEATURE_MAX,
 };
 
@@ -302,8 +282,6 @@ static inline const char *get_disp_event_type_name(__u32 event_type)
 		return "Fps";
 	case MI_DISP_EVENT_BRIGHTNESS_CLONE:
 		return "Brightness_clone";
-	case MI_DISP_EVENT_BIC:
-		return "Bic";
 	default:
 		return "Unknown";
 	}
@@ -358,8 +336,8 @@ static inline const char *get_disp_feature_id_name(int feature_id)
 		return "color_invert";
 	case DISP_FEATURE_DC_BACKLIGHT:
 		return "dc_backlight";
-	case DISP_FEATURE_BIC:
-		return "bic";
+	case DISP_FEATURE_DBI:
+		return "dbi";
 	case DISP_FEATURE_GIR:
 		return "gir";
 	default:
@@ -410,8 +388,6 @@ static inline const char *getDispEventTypeName(__u32 event_type)
 		return "Fps";
 	case MI_DISP_EVENT_BRIGHTNESS_CLONE:
 		return "brightness_clone";
-	case MI_DISP_EVENT_BIC:
-		return "Bic";
 	default:
 		return "Unknown";
 	}
@@ -492,7 +468,6 @@ static inline const char *getDispFeatureIdName(int feature_id)
 #define MI_DISP_IOCTL_WRITE_DSI_CMD        _IOW('D', 0x09, struct disp_dsi_cmd_req)
 #define MI_DISP_IOCTL_READ_DSI_CMD        _IOWR('D', 0x0A, struct disp_dsi_cmd_req)
 #define MI_DISP_IOCTL_GET_BRIGHTNESS       _IOR('D', 0x0B, struct disp_brightness_req)
-#define MI_DISP_IOCTL_GET_BIC              _IOWR('D', 0x0C, struct disp_bic_info_req)
 
 #if defined(__cplusplus)
 }

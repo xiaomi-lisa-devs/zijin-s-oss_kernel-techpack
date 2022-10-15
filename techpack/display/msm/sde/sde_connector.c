@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #define pr_fmt(fmt)	"[drm:%s:%d] " fmt, __func__, __LINE__
@@ -194,13 +193,20 @@ static int sde_backlight_cooling_cb(struct notifier_block *nb,
 					unsigned long val, void *data)
 {
 	struct sde_connector *c_conn;
+	struct dsi_display *display;
 	struct backlight_device *bd = (struct backlight_device *)data;
 
 	c_conn = bl_get_data(bd);
 	SDE_DEBUG("bl: thermal max brightness cap:%lu\n", val);
 	c_conn->thermal_max_brightness = val;
 
-	sde_backlight_device_update_status(bd);
+	display = (struct dsi_display *) c_conn->display;
+
+	if (display->panel->mi_cfg.is_step_hbm) {
+		display->panel->mi_cfg.thermal_max_brightness_clone = val;
+		mi_dsi_display_set_brightness_clone(c_conn->display, display->panel->mi_cfg.real_brightness_clone);
+	} else
+		sde_backlight_device_update_status(bd);
 	return 0;
 }
 
@@ -234,7 +240,7 @@ static int sde_backlight_setup(struct sde_connector *c_conn,
 	props.type = BACKLIGHT_RAW;
 	props.power = FB_BLANK_UNBLANK;
 	props.max_brightness = bl_config->brightness_max_level;
-	props.brightness = bl_config->brightness_max_level;
+	props.brightness = bl_config->brightness_init_level;
 	snprintf(bl_node_name, BL_NODE_NAME_SIZE, "panel%u-backlight",
 							display_count);
 	c_conn->bl_device = backlight_device_register(bl_node_name, dev->dev,
@@ -579,10 +585,18 @@ void sde_connector_schedule_status_work(struct drm_connector *connector,
 {
 	struct sde_connector *c_conn;
 	struct msm_display_info info;
+	struct dsi_display *display;
+	struct mi_dsi_panel_cfg *mi_cfg;
 
 	c_conn = to_sde_connector(connector);
-	if (!c_conn)
+	if (!c_conn || !c_conn->display)
 		return;
+
+	display = c_conn->display;
+	if (!display->panel)
+		return;
+
+	mi_cfg = &display->panel->mi_cfg;
 
 	/* Return if there is no change in ESD status check condition */
 	if (en == c_conn->esd_status_check)
@@ -598,9 +612,12 @@ void sde_connector_schedule_status_work(struct drm_connector *connector,
 			 * If debugfs property is not set then take
 			 * default value
 			 */
-			interval = c_conn->esd_status_interval ?
-				c_conn->esd_status_interval :
-					STATUS_CHECK_INTERVAL_MS;
+			if (mi_cfg->panel_id != 0x4B394400420d00) {
+				interval = c_conn->esd_status_interval ?
+					c_conn->esd_status_interval :
+						STATUS_CHECK_INTERVAL_MS;
+			} else
+				interval = mi_cfg->panel_status_check_interval;
 			/* Schedule ESD status check */
 			schedule_delayed_work(&c_conn->status_work,
 				msecs_to_jiffies(interval));
@@ -907,6 +924,8 @@ int sde_connector_pre_kickoff(struct drm_connector *connector)
 	SDE_EVT32_VERBOSE(connector->base.id);
 
 	mi_sde_connector_gir_fence(connector);
+
+	mi_sde_connector_dc_fence(connector);
 
 	mi_sde_connector_fod_hbm_fence(connector);
 
@@ -2485,10 +2504,9 @@ void _sde_connector_report_panel_dead(struct sde_connector *conn,
 		return;
 
 	SDE_EVT32(SDE_EVTLOG_ERROR);
+	conn->panel_dead = true;
 	sde_encoder_display_failure_notification(conn->encoder,
 		skip_pre_kickoff);
-
-	conn->panel_dead = true;
 
 	event.type = DRM_EVENT_PANEL_DEAD;
 	event.length = sizeof(bool);

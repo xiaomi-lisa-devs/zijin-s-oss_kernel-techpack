@@ -576,6 +576,8 @@ static struct snd_soc_dai_driver msm_fe_dais[] = {
 			.aif_name = "RX1_CDC_DMA_DL_US",
 #elif defined (CONFIG_TARGET_PRODUCT_RENOIR)
 			.aif_name = "TERT_MI2S_DL_HL",
+#elif defined(CONFIG_TARGET_PRODUCT_MONA)
+			.aif_name = "PRI_TDM_RX_1_DL_US",
 #else
 			.aif_name = "TERT_TDM_RX_1_DL_US",
 #endif
@@ -896,8 +898,7 @@ static struct snd_soc_dai_driver msm_fe_dais[] = {
 			.aif_name = "PRI_MI2S_UL_HL",
 			.rates = SNDRV_PCM_RATE_8000_48000,
 			.formats = (SNDRV_PCM_FMTBIT_S16_LE |
-				    SNDRV_PCM_FMTBIT_S24_LE |
-				    SNDRV_PCM_FMTBIT_S24_3LE),
+				    SNDRV_PCM_FMTBIT_S24_LE),
 			.channels_min = 1,
 			.channels_max = 2,
 			.rate_min = 8000,
@@ -913,8 +914,7 @@ static struct snd_soc_dai_driver msm_fe_dais[] = {
 			.aif_name = "PRI_MI2S_DL_HL",
 			.rates = SNDRV_PCM_RATE_8000_384000,
 			.formats = (SNDRV_PCM_FMTBIT_S16_LE |
-				    SNDRV_PCM_FMTBIT_S24_LE |
-				    SNDRV_PCM_FMTBIT_S24_3LE),
+				    SNDRV_PCM_FMTBIT_S24_LE),
 			.channels_min = 1,
 			.channels_max = 2,
 			.rate_min =     8000,
@@ -945,8 +945,8 @@ static struct snd_soc_dai_driver msm_fe_dais[] = {
 			.stream_name = "Secondary MI2S_RX Hostless Playback",
 			.aif_name = "SEC_MI2S_DL_HL",
 			.rates = SNDRV_PCM_RATE_8000_384000,
-			.formats = SNDRV_PCM_FMTBIT_S16_LE |
-				    SNDRV_PCM_FMTBIT_S24_LE,
+			.formats = (SNDRV_PCM_FMTBIT_S16_LE |
+				    SNDRV_PCM_FMTBIT_S24_LE),
 			.channels_min = 1,
 			.channels_max = 2,
 			.rate_min = 8000,
@@ -962,8 +962,7 @@ static struct snd_soc_dai_driver msm_fe_dais[] = {
 			.aif_name = "TERT_MI2S_UL_HL",
 			.rates = SNDRV_PCM_RATE_8000_48000,
 			.formats = (SNDRV_PCM_FMTBIT_S16_LE |
-				    SNDRV_PCM_FMTBIT_S24_LE |
-				    SNDRV_PCM_FMTBIT_S24_3LE),
+				    SNDRV_PCM_FMTBIT_S24_LE),
 			.channels_min = 1,
 			.channels_max = 2,
 			.rate_min = 8000,
@@ -979,8 +978,7 @@ static struct snd_soc_dai_driver msm_fe_dais[] = {
 			.aif_name = "TERT_MI2S_DL_HL",
 			.rates = SNDRV_PCM_RATE_8000_384000,
 			.formats = SNDRV_PCM_FMTBIT_S16_LE |
-				    SNDRV_PCM_FMTBIT_S24_LE |
-				    SNDRV_PCM_FMTBIT_S24_3LE,
+				    SNDRV_PCM_FMTBIT_S24_LE,
 			.channels_min = 1,
 			.channels_max = 2,
 			.rate_min =	8000,

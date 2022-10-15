@@ -3,7 +3,6 @@
  *
  *
  * Copyright (C) 2014-2020 NXP Semiconductors, All Rights Reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  * Copyright 2020 GOODIX
  *
  * This program is free software; you can redistribute it and/or modify

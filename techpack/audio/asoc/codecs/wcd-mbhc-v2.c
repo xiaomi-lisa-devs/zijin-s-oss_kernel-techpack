@@ -1831,7 +1831,6 @@ static int wcd_mbhc_usbc_ana_event_handler(struct notifier_block *nb,
 		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_L_DET_EN, 0);
 		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_L_DET_EN, 1);
 	}
-
 	return 0;
 }
 #else

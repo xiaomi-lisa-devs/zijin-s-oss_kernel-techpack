@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  */
 #define DEBUG
 #include <linux/slab.h>
@@ -4245,14 +4246,7 @@ static int voice_send_cvp_channel_info_v2(struct voice_data *v,
 	case EC_REF_PATH:
 		channel_info_param_data->param_id =
 			VSS_PARAM_VOCPROC_EC_REF_CHANNEL_INFO;
-#if defined(CONFIG_TARGET_PRODUCT_CETUS)
-		if (v->dev_rx.port_id == 0x9020)
-			channel_info->num_channels = 4;
-		else
-			channel_info->num_channels = v->dev_rx.no_of_channels;
-#else
 		channel_info->num_channels = v->dev_rx.no_of_channels;
-#endif
 		channel_info->bits_per_sample = v->dev_rx.bits_per_sample;
 		memcpy(&channel_info->channel_mapping,
 		       v->dev_rx.channel_mapping,

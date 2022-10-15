@@ -2,6 +2,7 @@
  * cs35l41.c -- CS35l41 ALSA SoC audio driver
  *
  * Copyright 2018 Cirrus Logic, Inc.
+ * Copyright (C) 2021 XiaoMi, Inc.
  *
  * Author:	David Rhodes	<david.rhodes@cirrus.com>
  *		Brian Austin	<brian.austin@cirrus.com>
@@ -1379,11 +1380,6 @@ static int cs35l41_is_speaker_in_handset(struct snd_pcm_substream *substream,
 #endif
 #if defined(CONFIG_TARGET_PRODUCT_ODIN)
         SPK_DAI_NAME = "cs35l41.1-0042";
-        RCV_DAI_NAME = "cs35l41.1-0040";
-        HANDSET_TUNING = "rcv_voice_delta.txt";
-#endif
-#if defined(CONFIG_TARGET_PRODUCT_VILI)
-        SPK_DAI_NAME = "cs35l41.1-0041";
         RCV_DAI_NAME = "cs35l41.1-0040";
         HANDSET_TUNING = "rcv_voice_delta.txt";
 #endif

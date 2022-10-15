@@ -1,5 +1,6 @@
 /*
  * Copyright 2015-2018 NXP Semiconductors
+ * Copyright (C) 2021 XiaoMi, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +25,11 @@
 #define AFE_PARAM_ID_TFADSP_RX_GET_RESULT		(0x1000B922)
 #define AFE_PARAM_ID_TFADSP_RX_SET_BYPASS		(0x1000B923)
 
-#define TFA_USING_TERTIARY_MI2S
+#if defined(CONFIG_TARGET_PRODUCT_LISA)
+	#define TFA_USING_PRIMARY_TDM
+#else
+	#define TFA_USING_TERTIARY_MI2S
+#endif
 
 #if defined(TFA_USING_PRIMARY_TDM)
 	/*Attention: port_id =	AFE_PORT_ID_SECONDARY_MI2S_RX/TX, AFE_PORT_ID_TERTIARY_MI2S_RX/TX,

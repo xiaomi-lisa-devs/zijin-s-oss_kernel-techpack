@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  */
 
 #include <linux/init.h>
@@ -27201,7 +27202,7 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets[] = {
 #if defined(CONFIG_TARGET_PRODUCT_CETUS)
 	SND_SOC_DAPM_AIF_IN("RX1_CDC_DMA_DL_US", "ULTRAOUND_HOSTLESS Playback",
 		0, 0, 0, 0),
-#elif defined(CONFIG_TARGET_PRODUCT_MONA)
+#elif defined(CONFIG_TARGET_PRODUCT_LISA)
 	SND_SOC_DAPM_AIF_IN("PRI_TDM_RX_1_DL_US", "ULTRAOUND_HOSTLESS Playback",
 		0, 0, 0, 0),
 #else

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  */
 #include <linux/module.h>
 #include <linux/init.h>
@@ -45,11 +46,7 @@
 #define TX_MACRO_DMIC_UNMUTE_DELAY_MS	40
 #define TX_MACRO_AMIC_UNMUTE_DELAY_MS	200
 #define TX_MACRO_DMIC_HPF_DELAY_MS	200
-#if defined(CONFIG_TARGET_PRODUCT_VILI)
-#define TX_MACRO_AMIC_HPF_DELAY_MS	200
-#else
 #define TX_MACRO_AMIC_HPF_DELAY_MS	100
-#endif
 
 struct tx_macro_priv *g_tx_priv;
 

@@ -1289,6 +1289,10 @@ static int tfa98xx_set_profile(struct snd_kcontrol *kcontrol,
 	list_for_each_entry(tfa98xx, &tfa98xx_device_list, list) {
 		int err;
 		int ready = 0;
+	 /* Flag DSP as invalidated as the profile change may invalidate the
+	 * current DSP configuration. That way, further stream start can
+	 * trigger a tfa_dev_start.*/
+		tfa98xx->dsp_init = TFA98XX_DSP_INIT_INVALIDATED;
 
 		/* update 'real' profile (container profile) */
 		tfa98xx->profile = prof_idx;
@@ -1309,11 +1313,6 @@ static int tfa98xx_set_profile(struct snd_kcontrol *kcontrol,
 				}
 			}
 			mutex_unlock(&tfa98xx->dsp_lock);
-			/* Flag DSP as invalidated as the profile change may invalidate the
-			 * current DSP configuration. That way, further stream start can
-			 * trigger a tfa_dev_start.
-			 */
-			tfa98xx->dsp_init = TFA98XX_DSP_INIT_INVALIDATED;
 		}
 	}
 
@@ -3017,7 +3016,7 @@ static int tfa98xx_mute(struct snd_soc_dai *dai, int mute, int stream)
 		}
 #endif
 		tfa_dev_stop(tfa98xx->tfa);
-#if defined(CONFIG_TARGET_PRODUCT_RENOIR)
+#if defined(CONFIG_TARGET_PRODUCT_RENOIR) || defined(CONFIG_TARGET_PRODUCT_LISA)
 		if (stream == SNDRV_PCM_STREAM_PLAYBACK){
 			if(gpio_is_valid(tfa98xx->spk_sw_gpio)){
 				gpio_direction_output(tfa98xx->spk_sw_gpio,0);
@@ -3032,7 +3031,7 @@ static int tfa98xx_mute(struct snd_soc_dai *dai, int mute, int stream)
 	else {
 		if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			tfa98xx->pstream = 1;
-#if defined(CONFIG_TARGET_PRODUCT_RENOIR)
+#if defined(CONFIG_TARGET_PRODUCT_RENOIR) || defined(CONFIG_TARGET_PRODUCT_LISA)
 			if(strcmp (tfa_cont_profile_name (tfa98xx, tfa98xx_mixer_profile), "handset")== 0){
 				if(gpio_is_valid(tfa98xx->spk_sw_gpio)){
 					gpio_direction_output(tfa98xx->spk_sw_gpio,1);

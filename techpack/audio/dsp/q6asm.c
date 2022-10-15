@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  * Author: Brian Swetland <swetland@google.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -7387,7 +7388,7 @@ static int __q6asm_media_format_block_multi_ch_pcm_v5(struct audio_client *ac,
 	if (fmt.param.num_channels==2) {
 		if (channel_mapping[0] == 0 || channel_mapping[1] ==0) {
 			pr_err("%s: chnl map wrong %d, %d\n", __func__,
-			channel_mapping[0], channel_mapping[1]);
+				channel_mapping[0], channel_mapping[1]);
 			channel_mapping[0] = 1;
 			channel_mapping[1] = 2;
 		}

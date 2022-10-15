@@ -27,35 +27,25 @@ enum bkl_dimming_state {
 	STATE_ALL
 };
 
-/* 90Hz gamma and 144Hz gamma info */
-struct gamma_cfg {
-	bool read_done;
-	/* 144Hz gamma info */
-	u8 otp_read_b8[44];
-	u8 otp_read_b9[237];
-	u8 otp_read_ba[63];
-
-	u32 flash_read_total_param;
-	u64 gamma_checksum;
-	u8 flash_gamma_read[346];
-	/* 90Hz gamma info */
-	u8 flash_read_b8[44];
-	u8 flash_read_b9[237];
-	u8 flash_read_ba[63];
-	u8 flash_read_checksum[2];
-
-	int update_b8_index;
-	int update_b9_index;
-	int update_ba_index;
-
-	bool update_done_90hz;
-	bool update_done_144hz;
-};
-
 struct flatmode_cfg {
-	bool read_done;
+	bool update_done;
 	int update_index;
 	u8 flatmode_param[4];
+};
+
+enum dc_lut_state {
+	DC_LUT_60HZ,
+	DC_LUT_120HZ,
+	DC_LUT_MAX
+};
+
+/* Enter/Exit DC_LUT info */
+struct dc_lut_cfg {
+	bool update_done;
+	int dc_on_index[DC_LUT_MAX];
+	int dc_off_index[DC_LUT_MAX];
+	u8 enter_dc_lut[DC_LUT_MAX][75];
+	u8 exit_dc_lut[DC_LUT_MAX][75];
 };
 
 struct lhbm_rgb_cfg {
@@ -106,11 +96,12 @@ struct mi_dsi_panel_cfg {
 	/* indicate refresh frequency Fps gpio */
 	int disp_rate_gpio;
 
-	/* gamma read */
-	bool gamma_update_flag;
-	struct gamma_cfg gamma_cfg;
 	char demura_data[900];
 	struct lhbm_rgb_cfg lhbm_rgb_cfg;
+
+	/* DC_LUT Setting read */
+	bool dc_update_flag;
+	struct dc_lut_cfg dc_cfg;
 
 	/* flatmode read */
 	bool flatmode_update_flag;
@@ -143,7 +134,6 @@ struct mi_dsi_panel_cfg {
 	int hbm_brightness_flag;
 	int local_hbm_on_87_index;
 	int local_hbm_hlpm_on_87_index;
-	int cup_dbi_reg_index;
 
 	bool in_fod_calibration;
 
@@ -181,6 +171,11 @@ struct mi_dsi_panel_cfg {
 	u32 fod_low_brightness_lux_threshold;
 	int local_hbm_target;
 
+	bool nvt_bic_enabled;
+	int nvt_bic_post_on_d0_index;
+	bool nvt_bic_reg_transfer_finshed;
+	char bic_reg_data[9];
+
 	u32 fod_type;
 	bool fp_display_on_optimize;
 
@@ -205,8 +200,12 @@ struct mi_dsi_panel_cfg {
 	u32 aod_exit_delay_time;
 	u64 aod_enter_time;
 
+	char *bic_data;
+	int bic_data_size;
+
 	u32 hbm_backlight_threshold;
 	bool gir_enabled;
+	bool aod_brightness_work_flag;
 };
 
 struct dsi_read_config {
@@ -242,13 +241,6 @@ int mi_dsi_panel_write_mipi_reg(struct dsi_panel *panel,
 			char *buf);
 
 ssize_t mi_dsi_panel_read_mipi_reg(struct dsi_panel *panel,
-			char *buf, size_t size);
-
-int mi_dsi_panel_read_gamma_param(struct dsi_panel *panel);
-
-int mi_dsi_panel_update_gamma_param(struct dsi_panel *panel);
-
-ssize_t mi_dsi_panel_print_gamma_param(struct dsi_panel *panel,
 			char *buf, size_t size);
 
 bool mi_dsi_panel_is_need_tx_cmd(u32 feature_id);
@@ -292,6 +284,7 @@ void mi_dsi_dc_mode_enable(struct dsi_panel *panel,
 
 int mi_dsi_fps_switch(struct dsi_panel *panel);
 
+int mi_dsi_set_bic_reg(struct dsi_panel *panel);
 
 int mi_dsi_panel_set_brightness_clone(struct dsi_panel *panel,
 			u32 brightness_clone);
@@ -325,8 +318,8 @@ char *mi_dsi_panel_get_bic_data_info(int * bic_len);
 
 char *mi_dsi_panel_get_bic_reg_data_array(struct dsi_panel *panel);
 
-int mi_dsi_panel_read_flatmode_param(struct dsi_panel *panel);
+int mi_dsi_panel_read_and_update_flatmode_param(struct dsi_panel *panel);
 
-int mi_dsi_panel_set_cup_dbi(struct dsi_panel *panel, int value);
+int mi_dsi_panel_read_and_update_dc_param(struct dsi_panel *panel);
 
 #endif /* _MI_DSI_PANEL_H_ */

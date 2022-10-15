@@ -221,27 +221,6 @@ static ssize_t doze_brightness_show(struct device *device,
 	}
 }
 
-static ssize_t gamma_test_show(struct device *device,
-		struct device_attribute *attr, char *buf)
-{
-	struct disp_display *dd_ptr = to_disp_display(device);
-	int ret = 0;
-
-	if (dd_ptr->intf_type == MI_INTF_DSI) {
-		ret = mi_dsi_display_read_gamma_param(dd_ptr->display);
-		if (ret)
-			DISP_ERROR("Failed to read gamma param!\n");
-
-		ret = mi_dsi_display_print_gamma_param(dd_ptr->display, buf, PAGE_SIZE);
-	} else {
-		DISP_ERROR("Unsupported display(%s intf)\n",
-			get_disp_intf_type_name(dd_ptr->intf_type));
-		ret = -EINVAL;
-	}
-
-	return ret;
-}
-
 static ssize_t brightness_clone_show(struct device *device,
 		struct device_attribute *attr, char *buf)
 {
@@ -307,7 +286,6 @@ static DEVICE_ATTR_RO(panel_info);
 static DEVICE_ATTR_RO(wp_info);
 static DEVICE_ATTR_RO(dynamic_fps);
 static DEVICE_ATTR_RW(doze_brightness);
-static DEVICE_ATTR_RO(gamma_test);
 static DEVICE_ATTR_RW(brightness_clone);
 static DEVICE_ATTR_RO(hw_vsync_info);
 static DEVICE_ATTR_RO(cell_id);
@@ -319,7 +297,6 @@ static struct attribute *disp_feature_attrs[] = {
 	&dev_attr_wp_info.attr,
 	&dev_attr_dynamic_fps.attr,
 	&dev_attr_doze_brightness.attr,
-	&dev_attr_gamma_test.attr,
 	&dev_attr_brightness_clone.attr,
 	&dev_attr_hw_vsync_info.attr,
 	&dev_attr_cell_id.attr,

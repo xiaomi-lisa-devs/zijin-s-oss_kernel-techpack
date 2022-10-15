@@ -30,11 +30,6 @@ int mi_dsi_display_write_mipi_reg(void *display,
 ssize_t mi_dsi_display_read_mipi_reg(void *display,
 			char *buf, size_t size);
 
-int mi_dsi_display_read_gamma_param(void *display);
-
-ssize_t mi_dsi_display_print_gamma_param(void *display,
-			char *buf, size_t size);
-
 ssize_t mi_dsi_display_read_panel_info(void *display,
 			char *buf, size_t size);
 
@@ -80,6 +75,12 @@ void mi_dsi_display_wakeup_pending_doze_work(struct dsi_display *display);
 bool mi_is_doze_full_brightness_supported(void *display);
 
 void mi_dsi_display_update_backlight(struct dsi_display *display);
+
+int mi_dsi_display_read_nvt_bic(void *display);
+
+char *mi_dsi_display_get_bic_data_info(void *display, int * bic_len);
+
+char *mi_dsi_display_get_bic_reg_data_array(void *display);
 
 ssize_t mi_dsi_display_cell_id_read(void *display,
 			char *buf, size_t size);

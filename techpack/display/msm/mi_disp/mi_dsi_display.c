@@ -174,32 +174,6 @@ ssize_t mi_dsi_display_read_mipi_reg(void *display,
 	return ret;
 }
 
-int mi_dsi_display_read_gamma_param(void *display)
-{
-	struct dsi_display *dsi_display = (struct dsi_display *)display;
-	int rc = 0;
-
-	if (!dsi_display) {
-		DISP_ERROR("Invalid display ptr\n");
-		return -EINVAL;
-	}
-
-	rc = mi_dsi_panel_read_gamma_param(dsi_display->panel);
-	if (rc) {
-		DISP_ERROR("Failed to read gamma para, rc=%d\n", rc);
-	}
-
-	return rc;
-}
-
-ssize_t mi_dsi_display_print_gamma_param(void *display,
-			char *buf, size_t size)
-{
-	struct dsi_display *dsi_display = (struct dsi_display *)display;
-
-	return mi_dsi_panel_print_gamma_param(dsi_display->panel, buf, size);
-}
-
 ssize_t mi_dsi_display_read_panel_info(void *display,
 			char *buf, size_t size)
 {
@@ -547,6 +521,45 @@ void mi_dsi_display_update_backlight(struct dsi_display *display)
 	}
 
 	backlight_update_status(c_conn->bl_device);
+}
+
+int mi_dsi_display_read_nvt_bic(void *display)
+{
+	struct dsi_display *dsi_display = (struct dsi_display *)display;
+	int ret = 0;
+
+	if (!dsi_display) {
+		DISP_ERROR("Invalid display ptr\n");
+		return -EINVAL;
+	}
+
+	ret = mi_dsi_panel_read_nvt_bic(dsi_display->panel);
+
+	return ret;
+}
+
+char *mi_dsi_display_get_bic_data_info(void *display, int * bic_len)
+{
+	struct dsi_display *dsi_display = (struct dsi_display *)display;
+
+	if (!dsi_display) {
+		DISP_ERROR("Invalid display ptr\n");
+		return NULL;
+	}
+
+	return mi_dsi_panel_get_bic_data_info(bic_len);
+}
+
+char *mi_dsi_display_get_bic_reg_data_array(void *display)
+{
+	struct dsi_display *dsi_display = (struct dsi_display *)display;
+
+	if (!dsi_display) {
+		DISP_ERROR("Invalid display ptr\n");
+		return NULL;
+	}
+
+	return mi_dsi_panel_get_bic_reg_data_array(dsi_display->panel);
 }
 
 ssize_t mi_dsi_display_cell_id_read(void *display,

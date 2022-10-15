@@ -44,6 +44,9 @@ struct dsi_read_config g_dsi_read_cfg;
 */
 int fold_status;
 
+#define NVT_BIC_LENGTH 21060
+static char read_result[21060];
+
 static int mi_dsi_update_hbm_cmd_51reg(struct dsi_panel *panel,
 			enum dsi_cmd_set_type type, int bl_lvl);
 static int mi_dsi_update_hbm_cmd_87reg(struct dsi_panel *panel,
@@ -622,600 +625,41 @@ ssize_t mi_dsi_panel_show_dsi_cmd_set_type(struct dsi_panel *panel,
 	return count;
 }
 
-static int mi_dsi_panel_read_gamma_otp_and_flash(struct dsi_panel *panel,
-				struct dsi_display_ctrl *ctrl)
+int mi_dsi_panel_read_and_update_flatmode_param(struct dsi_panel *panel)
 {
 	int rc = 0;
-	int retval = 0;
-	int i = 0;
-	int retry_cnt = 0;
-	u32 flags = 0;
-	struct dsi_display_mode *mode;
-	struct gamma_cfg *gamma_cfg;
-	struct dsi_cmd_desc *cmds;
-	enum dsi_cmd_set_state state;
-	u32 param_index = 0;
-	u8 read_param_buf[256] = {0};
-	bool checksum_pass = 0;
-
-	if (!panel || !ctrl || !panel->cur_mode || !panel->cur_mode->priv_info) {
-		DISP_ERROR("invalid params\n");
-		return -EINVAL;
-	}
-
-	mode = panel->cur_mode;
-	gamma_cfg = &panel->mi_cfg.gamma_cfg;
-
-	/* OTP Read 144hz gamma parameter */
-	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_GAMMA_OTP_READ_PRE);
-	if (rc) {
-		DISP_ERROR("Failed to send DSI_CMD_SET_MI_GAMMA_OTP_READ_PRE command\n");
-		retval = -EAGAIN;
-		goto error;
-	}
-
-	DISP_INFO("[%s] Gamma 0xB8 OPT Read 44 Parameter (144Hz)\n", panel->type);
-	flags = 0;
-	memset(read_param_buf, 0, sizeof(read_param_buf));
-	cmds = mode->priv_info->cmd_sets[DSI_CMD_SET_MI_GAMMA_OTP_READ_B8].cmds;
-	state = mode->priv_info->cmd_sets[DSI_CMD_SET_MI_GAMMA_OTP_READ_B8].state;
-	if (state == DSI_CMD_SET_STATE_LP)
-		cmds->msg.flags |= MIPI_DSI_MSG_USE_LPM;
-	if (cmds->last_command) {
-		cmds->msg.flags |= MIPI_DSI_MSG_LASTCOMMAND;
-		flags |= DSI_CTRL_CMD_LAST_COMMAND;
-	}
-	flags |= (DSI_CTRL_CMD_FETCH_MEMORY | DSI_CTRL_CMD_READ | DSI_CTRL_CMD_CUSTOM_DMA_SCHED);
-	cmds->msg.rx_buf = read_param_buf;
-	cmds->msg.rx_len = sizeof(gamma_cfg->otp_read_b8);
-	rc = dsi_ctrl_cmd_transfer(ctrl->ctrl, &cmds->msg, &flags);
-	if (rc <= 0) {
-		DISP_ERROR("Failed to read DSI_CMD_SET_MI_GAMMA_OTP_READ_B8\n");
-		retval = -EAGAIN;
-		goto error;
-	}
-	memcpy(gamma_cfg->otp_read_b8, cmds->msg.rx_buf, sizeof(gamma_cfg->otp_read_b8));
-
-	DISP_INFO("[%s] Gamma 0xB9 OPT Read 237 Parameter (144Hz)\n", panel->type);
-	flags = 0;
-	memset(read_param_buf, 0, sizeof(read_param_buf));
-	cmds = mode->priv_info->cmd_sets[DSI_CMD_SET_MI_GAMMA_OTP_READ_B9].cmds;
-	state = mode->priv_info->cmd_sets[DSI_CMD_SET_MI_GAMMA_OTP_READ_B9].state;
-	if (state == DSI_CMD_SET_STATE_LP)
-		cmds->msg.flags |= MIPI_DSI_MSG_USE_LPM;
-	if (cmds->last_command) {
-		cmds->msg.flags |= MIPI_DSI_MSG_LASTCOMMAND;
-		flags |= DSI_CTRL_CMD_LAST_COMMAND;
-	}
-	flags |= (DSI_CTRL_CMD_FETCH_MEMORY | DSI_CTRL_CMD_READ | DSI_CTRL_CMD_CUSTOM_DMA_SCHED);
-	cmds->msg.rx_buf = read_param_buf;
-	cmds->msg.rx_len = sizeof(gamma_cfg->otp_read_b9);
-	rc = dsi_ctrl_cmd_transfer(ctrl->ctrl, &cmds->msg, &flags);
-	if (rc <= 0) {
-		DISP_ERROR("Failed to read DSI_CMD_SET_MI_GAMMA_OTP_READ_B9\n");
-		retval = -EAGAIN;
-		goto error;
-	}
-	memcpy(gamma_cfg->otp_read_b9, cmds->msg.rx_buf, sizeof(gamma_cfg->otp_read_b9));
-
-	DISP_INFO("[%s] Gamma 0xBA OTP Read 63 Parameter (144Hz)\n", panel->type);
-	flags = 0;
-	memset(read_param_buf, 0, sizeof(read_param_buf));
-	cmds = mode->priv_info->cmd_sets[DSI_CMD_SET_MI_GAMMA_OTP_READ_BA].cmds;
-	state = mode->priv_info->cmd_sets[DSI_CMD_SET_MI_GAMMA_OTP_READ_BA].state;
-	if (state == DSI_CMD_SET_STATE_LP)
-		cmds->msg.flags |= MIPI_DSI_MSG_USE_LPM;
-	if (cmds->last_command) {
-		cmds->msg.flags |= MIPI_DSI_MSG_LASTCOMMAND;
-		flags |= DSI_CTRL_CMD_LAST_COMMAND;
-	}
-	flags |= (DSI_CTRL_CMD_FETCH_MEMORY | DSI_CTRL_CMD_READ | DSI_CTRL_CMD_CUSTOM_DMA_SCHED);
-	cmds->msg.rx_buf = read_param_buf;
-	cmds->msg.rx_len = sizeof(gamma_cfg->otp_read_ba);
-	rc = dsi_ctrl_cmd_transfer(ctrl->ctrl, &cmds->msg, &flags);
-	if (rc <= 0) {
-		DISP_ERROR("Failed to read DSI_CMD_SET_MI_GAMMA_OTP_READ_BA\n");
-		retval = -EAGAIN;
-		goto error;
-	}
-	memcpy(gamma_cfg->otp_read_ba, cmds->msg.rx_buf, sizeof(gamma_cfg->otp_read_ba));
-
-	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_GAMMA_OTP_READ_POST);
-	if (rc) {
-		pr_err("Failed to send DSI_CMD_SET_MI_GAMMA_OTP_READ_POST command\n");
-		retval = -EAGAIN;
-		goto error;
-	}
-	DISP_INFO("[%s] OTP Read 144hz gamma done\n", panel->type);
-
-	/* Flash Read 90hz gamma parameter */
-	do {
-		gamma_cfg->gamma_checksum = 0;
-
-		if (retry_cnt > 0) {
-			DISP_ERROR("Failed to flash read 90hz gamma parameters, retry_cnt = %d\n",
-					retry_cnt);
-			mdelay(80);
-		}
-
-		DISP_INFO("Gamma Flash Read1 200 Parameter (90Hz)\n");
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_GAMMA_FLASH_READ1_PRE);
-		if (rc) {
-			DISP_ERROR("Failed to send DSI_CMD_SET_MI_GAMMA_FLASH_READ1_PRE command\n");
-			retval = -EAGAIN;
-			goto error;
-		}
-
-		flags = 0;
-		memset(read_param_buf, 0, sizeof(read_param_buf));
-		cmds = mode->priv_info->cmd_sets[DSI_CMD_SET_MI_GAMMA_FLASH_READ_F6].cmds;
-		state = mode->priv_info->cmd_sets[DSI_CMD_SET_MI_GAMMA_FLASH_READ_F6].state;
-		if (state == DSI_CMD_SET_STATE_LP)
-			cmds->msg.flags |= MIPI_DSI_MSG_USE_LPM;
-		if (cmds->last_command) {
-			cmds->msg.flags |= MIPI_DSI_MSG_LASTCOMMAND;
-			flags |= DSI_CTRL_CMD_LAST_COMMAND;
-		}
-		flags |= (DSI_CTRL_CMD_FETCH_MEMORY | DSI_CTRL_CMD_READ | DSI_CTRL_CMD_CUSTOM_DMA_SCHED);
-		cmds->msg.rx_buf = read_param_buf;
-		cmds->msg.rx_len = 200;
-		rc = dsi_ctrl_cmd_transfer(ctrl->ctrl, &cmds->msg, &flags);
-		if (rc <= 0) {
-			DISP_ERROR("Failed to read DSI_CMD_SET_MI_GAMMA_FLASH_READ_F6\n");
-			retval = -EAGAIN;
-			goto error;
-		}
-		memcpy(gamma_cfg->flash_gamma_read, cmds->msg.rx_buf, 200);
-
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_GAMMA_FLASH_READ_POST);
-		if (rc) {
-			DISP_ERROR("Failed to send DSI_CMD_SET_MI_GAMMA_FLASH_READ_POST command\n");
-			retval = -EAGAIN;
-			goto error;
-		}
-
-		DISP_INFO("Gamma Flash Read2 146 Parameter (90Hz)\n");
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_GAMMA_FLASH_READ2_PRE);
-		if (rc) {
-			DISP_ERROR("Failed to send DSI_CMD_SET_MI_GAMMA_FLASH_READ2_PRE command\n");
-			retval = -EAGAIN;
-			goto error;
-		}
-
-		flags = 0;
-		memset(read_param_buf, 0, sizeof(read_param_buf));
-		cmds = mode->priv_info->cmd_sets[DSI_CMD_SET_MI_GAMMA_FLASH_READ_F6].cmds;
-		state = mode->priv_info->cmd_sets[DSI_CMD_SET_MI_GAMMA_FLASH_READ_F6].state;
-		if (state == DSI_CMD_SET_STATE_LP)
-			cmds->msg.flags |= MIPI_DSI_MSG_USE_LPM;
-		if (cmds->last_command) {
-			cmds->msg.flags |= MIPI_DSI_MSG_LASTCOMMAND;
-			flags |= DSI_CTRL_CMD_LAST_COMMAND;
-		}
-		flags |= (DSI_CTRL_CMD_FETCH_MEMORY | DSI_CTRL_CMD_READ | DSI_CTRL_CMD_CUSTOM_DMA_SCHED);
-		cmds->msg.rx_buf = read_param_buf;
-		cmds->msg.rx_len = 146;
-		rc = dsi_ctrl_cmd_transfer(ctrl->ctrl, &cmds->msg, &flags);
-		if (rc <= 0) {
-			DISP_ERROR("Failed to read DSI_CMD_SET_MI_GAMMA_FLASH_READ_F6\n");
-			retval = -EAGAIN;
-			goto error;
-		}
-		memcpy(&gamma_cfg->flash_gamma_read[200], cmds->msg.rx_buf, 146);
-
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_GAMMA_FLASH_READ_POST);
-		if (rc) {
-			DISP_ERROR("Failed to send DSI_CMD_SET_MI_GAMMA_FLASH_READ_POST command\n");
-			retval = -EAGAIN;
-			goto error;
-		}
-
-		for(i = 0; i < gamma_cfg->flash_read_total_param; i++)
-		{
-			if (i < sizeof(gamma_cfg->flash_read_b8)) {
-				gamma_cfg->flash_read_b8[i] = gamma_cfg->flash_gamma_read[i];
-			}
-			else if (i < (sizeof(gamma_cfg->flash_read_b8) +
-						sizeof(gamma_cfg->flash_read_b9))) {
-				param_index = i - sizeof(gamma_cfg->flash_read_b8);
-				gamma_cfg->flash_read_b9[param_index] = gamma_cfg->flash_gamma_read[i];
-			}
-			else if (i < (sizeof(gamma_cfg->flash_read_b8) +
-					sizeof(gamma_cfg->flash_read_b9) +
-					sizeof(gamma_cfg->flash_read_ba))) {
-				param_index = i - (sizeof(gamma_cfg->flash_read_b8) +
-								sizeof(gamma_cfg->flash_read_b9));
-				gamma_cfg->flash_read_ba[param_index] = gamma_cfg->flash_gamma_read[i];
-			}
-
-			if (i < (gamma_cfg->flash_read_total_param - 2)) {
-				gamma_cfg->gamma_checksum = gamma_cfg->flash_gamma_read[i] + gamma_cfg->gamma_checksum;
-			} else {
-				if (i == (gamma_cfg->flash_read_total_param - 2))
-					gamma_cfg->flash_read_checksum[0] = gamma_cfg->flash_gamma_read[i];
-				if (i == (gamma_cfg->flash_read_total_param - 1))
-					gamma_cfg->flash_read_checksum[1] = gamma_cfg->flash_gamma_read[i];
-			}
-		}
-		if (gamma_cfg->gamma_checksum == ((gamma_cfg->flash_read_checksum[0] << 8)
-				+ gamma_cfg->flash_read_checksum[1])) {
-			checksum_pass = 1;
-			DISP_INFO("[%s] Flash Read 90hz gamma done\n", panel->type);
-		} else {
-			checksum_pass = 0;
-		}
-
-		retry_cnt++;
-	}
-	while (!checksum_pass && (retry_cnt < 5));
-
-	if (checksum_pass) {
-		gamma_cfg->read_done = 1;
-		DISP_INFO("[%s] Gamma read done\n", panel->type);
-		retval = 0;
-	} else {
-		DISP_ERROR("[%s] Failed to flash read 90hz gamma\n", panel->type);
-		retval = -EAGAIN;
-	}
-
-error:
-	return retval;
-
-}
-
-int mi_dsi_panel_read_gamma_param(struct dsi_panel *panel)
-{
-	int rc = 0, ret = 0;
+	struct flatmode_cfg *flatmode_cfg  = NULL;
+	struct dsi_display_mode_priv_info *priv_info;
+	struct dsi_cmd_desc *cmds = NULL;
 	struct dsi_display *display;
-	struct dsi_display_ctrl *ctrl;
+	struct dsi_display_mode *mode;
+	unsigned long mode_flags_backup = 0;
+	u32 num_display_modes;
+	ssize_t read_len = 0;
+	uint request_rx_len = 0;
+	u8 read_buf[16] = {0};
+	int i = 0;
+	u32 count;
+	u8 *tx_buf;
+	size_t tx_len;
+	u32 param_len;
 
 	if (!panel || !panel->host) {
 		DISP_ERROR("invalid params\n");
 		return -EINVAL;
 	}
 
-	if (!panel->mi_cfg.gamma_update_flag) {
-		DISP_DEBUG("[%s] Gamma_update_flag is not configed\n", panel->type);
+	if (!panel->mi_cfg.flatmode_update_flag) {
+		DISP_DEBUG("[%s] dc_update_flag is not configed\n", panel->type);
 		return 0;
 	}
 
-	display = to_dsi_display(panel->host);
-	if (display == NULL)
-		return -EINVAL;
-
-	if (!panel->panel_initialized) {
-		DISP_ERROR("[%s] Panel not initialized\n", panel->type);
-		return -EINVAL;
-	}
-
 	mutex_lock(&panel->panel_lock);
 
-	if (panel->mi_cfg.gamma_cfg.read_done) {
-		DISP_INFO("[%s] Gamma parameter have read and stored at"
-			" POWER ON sequence\n", panel->type);
-		goto unlock;
-	}
+	flatmode_cfg = &panel->mi_cfg.flatmode_cfg;
 
-	rc = dsi_display_clk_ctrl(display->dsi_clk_handle, DSI_ALL_CLKS, DSI_CLK_ON);
-	if (rc) {
-		DISP_ERROR("[%s] failed to enable DSI clocks, rc=%d\n", display->name, rc);
-		goto unlock;
-	}
-
-	ctrl = &display->ctrl[display->cmd_master_idx];
-
-	rc = dsi_display_cmd_engine_enable(display);
-	if (rc) {
-		DISP_ERROR("[%s] failed to enable cmd engine, rc=%d\n",
-		       display->name, rc);
-		goto error_disable_clks;
-	}
-
-	if (display->tx_cmd_buf == NULL) {
-		rc = dsi_host_alloc_cmd_tx_buffer(display);
-		if (rc) {
-			DISP_ERROR("failed to allocate cmd tx buffer memory\n");
-			goto error_disable_cmd_engine;
-		}
-	}
-
-	rc = mi_dsi_panel_read_gamma_otp_and_flash(panel, ctrl);
-	if (rc) {
-		DISP_ERROR("[%s]failed to get gamma parameter, rc=%d\n",
-		       display->name, rc);
-		goto error_disable_cmd_engine;
-	}
-
-error_disable_cmd_engine:
-	ret = dsi_display_cmd_engine_disable(display);
-	if (ret) {
-		DISP_ERROR("[%s]failed to disable DSI cmd engine, rc=%d\n",
-				display->name, ret);
-	}
-error_disable_clks:
-	ret = dsi_display_clk_ctrl(display->dsi_clk_handle,
-			DSI_ALL_CLKS, DSI_CLK_OFF);
-	if (ret) {
-		DISP_ERROR("[%s] failed to disable all DSI clocks, rc=%d\n",
-		       display->name, ret);
-	}
-unlock:
-	mutex_unlock(&panel->panel_lock);
-
-	return rc;
-}
-
-
-int mi_dsi_panel_update_gamma_param(struct dsi_panel *panel)
-{
-	struct dsi_display *display;
-	struct dsi_display_mode *mode;
-	struct gamma_cfg *gamma_cfg;
-	struct dsi_cmd_desc *cmds;
-	int total_modes;
-	u32 i, count;
-	u8 *tx_buf;
-	size_t tx_len;
-	u32 param_len;
-	int rc;
-
-	if (!panel || !panel->host){
-		DISP_ERROR("Invalid params\n");
-		return -EINVAL;
-	}
-
-	display = to_dsi_display(panel->host);
-	if (!display)
-		return -EINVAL;
-
-	if (!panel->mi_cfg.gamma_update_flag) {
-		DISP_DEBUG("[%s] Gamma_update_flag is not configed\n", panel->type);
-		return 0;
-	}
-
-	gamma_cfg = &panel->mi_cfg.gamma_cfg;
-	if (!gamma_cfg->read_done) {
-		DISP_ERROR("[%s] Gamma parameter not ready, gamma parameter should be"
-			" read and stored at POWER ON sequence\n", panel->type);
-		return -EAGAIN;
-	}
-
-	if (!display->modes) {
-		rc = dsi_display_get_modes(display, &mode);
-		if (rc) {
-			DISP_ERROR("Failed to get display mode for update gamma parameter\n");
-			return rc;
-		}
-	}
-
-	mutex_lock(&panel->panel_lock);
-	total_modes = panel->num_display_modes;
-	for (i = 0; i < total_modes; i++) {
-		mode = &display->modes[i];
-		if (mode && mode->priv_info) {
-			if (144 == mode->timing.refresh_rate && !gamma_cfg->update_done_144hz) {
-				DISP_INFO("[%s] Update GAMMA Parameter (144Hz)\n", panel->type);
-				cmds = mode->priv_info->cmd_sets[DSI_CMD_SET_MI_WRITE_GAMMA].cmds;
-				count = mode->priv_info->cmd_sets[DSI_CMD_SET_MI_WRITE_GAMMA].count;
-				if (cmds && count >= gamma_cfg->update_b8_index &&
-					count >= gamma_cfg->update_b9_index &&
-					count >= gamma_cfg->update_ba_index) {
-					tx_buf = (u8 *)cmds[gamma_cfg->update_b8_index].msg.tx_buf;
-					tx_len = cmds[gamma_cfg->update_b8_index].msg.tx_len;
-					param_len = min(sizeof(gamma_cfg->otp_read_b8), tx_len - 1);
-					if (tx_buf && tx_buf[0] == 0xB8)
-						memcpy(&tx_buf[1], gamma_cfg->otp_read_b8, param_len);
-					else
-						DISP_ERROR("failed to update gamma 0xB8 parameter\n");
-
-					tx_buf = (u8 *)cmds[gamma_cfg->update_b9_index].msg.tx_buf;
-					tx_len = cmds[gamma_cfg->update_b9_index].msg.tx_len;
-					param_len = min(sizeof(gamma_cfg->otp_read_b9), tx_len - 1);
-					if (tx_buf && tx_buf[0] == 0xB9)
-						memcpy(&tx_buf[1], gamma_cfg->otp_read_b9, param_len);
-					else
-						DISP_ERROR("failed to update gamma 0xB9 parameter\n");
-
-					tx_buf = (u8 *)cmds[gamma_cfg->update_ba_index].msg.tx_buf;
-					tx_len = cmds[gamma_cfg->update_ba_index].msg.tx_len;
-					param_len = min(sizeof(gamma_cfg->otp_read_ba), tx_len - 1);
-					if (tx_buf && tx_buf[0] == 0xBA)
-						memcpy(&tx_buf[1], gamma_cfg->otp_read_ba, param_len);
-					else
-						DISP_ERROR("failed to update gamma 0xBA parameter\n");
-
-					gamma_cfg->update_done_144hz = true;
-				} else {
-					DISP_ERROR("please check gamma update parameter index configuration\n");
-				}
-			}
-			if (90 == mode->timing.refresh_rate && !gamma_cfg->update_done_90hz) {
-				DISP_INFO("[%s] Update GAMMA Parameter (90Hz)\n", panel->type);
-				cmds = mode->priv_info->cmd_sets[DSI_CMD_SET_MI_WRITE_GAMMA].cmds;
-				count = mode->priv_info->cmd_sets[DSI_CMD_SET_MI_WRITE_GAMMA].count;
-				if (cmds && count >= gamma_cfg->update_b8_index &&
-					count >= gamma_cfg->update_b9_index &&
-					count >= gamma_cfg->update_ba_index) {
-					tx_buf = (u8 *)cmds[gamma_cfg->update_b8_index].msg.tx_buf;
-					tx_len = cmds[gamma_cfg->update_b8_index].msg.tx_len;
-					param_len = min(sizeof(gamma_cfg->flash_read_b8), tx_len - 1);
-					if (tx_buf && tx_buf[0] == 0xB8)
-						memcpy(&tx_buf[1], gamma_cfg->flash_read_b8, param_len);
-					else
-						DISP_ERROR("failed to update gamma 0xB8 parameter\n");
-
-					tx_buf = (u8 *)cmds[gamma_cfg->update_b9_index].msg.tx_buf;
-					tx_len = cmds[gamma_cfg->update_b9_index].msg.tx_len;
-					param_len = min(sizeof(gamma_cfg->flash_read_b9), tx_len - 1);
-					if (tx_buf && tx_buf[0] == 0xB9)
-						memcpy(&tx_buf[1], gamma_cfg->flash_read_b9, param_len);
-					else
-						DISP_ERROR("failed to update gamma 0xB9 parameter\n");
-
-					tx_buf = (u8 *)cmds[gamma_cfg->update_ba_index].msg.tx_buf;
-					tx_len = cmds[gamma_cfg->update_ba_index].msg.tx_len;
-					param_len = min(sizeof(gamma_cfg->flash_read_ba), tx_len - 1);
-					if (tx_buf && tx_buf[0] == 0xBA)
-						memcpy(&tx_buf[1], gamma_cfg->flash_read_ba, param_len);
-					else
-						DISP_ERROR("failed to update gamma 0xBA parameter\n");
-
-					gamma_cfg->update_done_90hz = true;
-				} else {
-					DISP_ERROR("please check gamma update parameter index configuration\n");
-				}
-			}
-		}
-	}
-	mutex_unlock(&panel->panel_lock);
-
-	return 0;
-}
-
-ssize_t mi_dsi_panel_print_gamma_param(struct dsi_panel *panel,
-				char *buf, size_t size)
-{
-	int i = 0;
-	ssize_t count = 0;
-	struct gamma_cfg *gamma_cfg;
-	u8 *buffer = NULL;
-
-	if (!panel) {
-		DISP_ERROR("invalid params\n");
-		return -EINVAL;
-	}
-
-	if (!panel->mi_cfg.gamma_update_flag) {
-		DISP_ERROR("gamma_update_flag is not configed\n");
-		return -EINVAL;
-	}
-
-	gamma_cfg = &panel->mi_cfg.gamma_cfg;
-
-	if (!gamma_cfg->read_done) {
-		DISP_INFO("Gamma parameter not read at POWER ON sequence\n");
-		return -EAGAIN;
-	}
-
-	mutex_lock(&panel->panel_lock);
-
-	count += snprintf(buf + count, size - count,
-				"Gamma 0xB8 OPT Read %d Parameter (144Hz)\n",
-				sizeof(gamma_cfg->otp_read_b8));
-	buffer = gamma_cfg->otp_read_b8;
-	for (i = 1; i <= sizeof(gamma_cfg->otp_read_b8); i++) {
-		if (i%8 && (i != sizeof(gamma_cfg->otp_read_b8))) {
-			count += snprintf(buf + count, size - count, "%02X ",
-				gamma_cfg->otp_read_b8[i - 1]);
-		} else {
-			count += snprintf(buf + count, size - count, "%02X\n",
-				gamma_cfg->otp_read_b8[i - 1]);
-		}
-	}
-
-	count += snprintf(buf + count, size - count,
-				"Gamma 0xB9 OPT Read %d Parameter (144Hz)\n",
-				sizeof(gamma_cfg->otp_read_b9));
-	buffer = gamma_cfg->otp_read_b9;
-	for (i = 1; i <= sizeof(gamma_cfg->otp_read_b9); i++) {
-		if (i%8 && (i != sizeof(gamma_cfg->otp_read_b9))) {
-			count += snprintf(buf + count, size - count, "%02X ",
-				gamma_cfg->otp_read_b9[i - 1]);
-		} else {
-			count += snprintf(buf + count, size - count, "%02X\n",
-				gamma_cfg->otp_read_b9[i - 1]);
-		}
-	}
-
-	count += snprintf(buf + count, size - count,
-				"Gamma 0xBA OPT Read %d Parameter (144Hz)\n",
-				sizeof(gamma_cfg->otp_read_ba));
-	buffer = gamma_cfg->otp_read_ba;
-	for (i = 1; i <= sizeof(gamma_cfg->otp_read_ba); i++) {
-		if (i%8 && (i != sizeof(gamma_cfg->otp_read_ba))) {
-			count += snprintf(buf + count, size - count, "%02X ",
-				gamma_cfg->otp_read_ba[i - 1]);
-		} else {
-			count += snprintf(buf + count, size - count, "%02X\n",
-				gamma_cfg->otp_read_ba[i - 1]);
-		}
-	}
-
-	count += snprintf(buf + count, size - count,
-				"Gamma Flash 0xB8 Read %d Parameter (90Hz)\n",
-				sizeof(gamma_cfg->flash_read_b8));
-	buffer = gamma_cfg->flash_read_b8;
-	for (i = 1; i <= sizeof(gamma_cfg->flash_read_b8); i++) {
-		if (i%8 && (i != sizeof(gamma_cfg->flash_read_b8))) {
-			count += snprintf(buf + count, size - count, "%02X ",
-				gamma_cfg->flash_read_b8[i - 1]);
-		} else {
-			count += snprintf(buf + count, size - count, "%02X\n",
-				gamma_cfg->flash_read_b8[i - 1]);
-		}
-	}
-
-	count += snprintf(buf + count, size - count,
-				"Gamma Flash 0xB9 Read %d Parameter (90Hz)\n",
-				sizeof(gamma_cfg->flash_read_b9));
-	buffer = gamma_cfg->flash_read_b9;
-	for (i = 1; i <= sizeof(gamma_cfg->flash_read_b9); i++) {
-		if (i%8 && (i != sizeof(gamma_cfg->flash_read_b9))) {
-			count += snprintf(buf + count, size - count, "%02X ",
-				gamma_cfg->flash_read_b9[i - 1]);
-		} else {
-			count += snprintf(buf + count, size - count, "%02X\n",
-				gamma_cfg->flash_read_b9[i - 1]);
-		}
-	}
-
-	count += snprintf(buf + count, size - count,
-				"Gamma Flash 0xBA Read %d Parameter (90Hz)\n",
-				sizeof(gamma_cfg->flash_read_ba));
-	buffer = gamma_cfg->flash_read_ba;
-	for (i = 1; i <= sizeof(gamma_cfg->flash_read_ba); i++) {
-		if (i%8 && (i != sizeof(gamma_cfg->flash_read_ba))) {
-			count += snprintf(buf + count, size - count, "%02X ",
-				gamma_cfg->flash_read_ba[i - 1]);
-		} else {
-			count += snprintf(buf + count, size - count, "%02X\n",
-				gamma_cfg->flash_read_ba[i - 1]);
-		}
-	}
-
-	count += snprintf(buf + count, size - count,
-				"Gamma Flash Read Checksum Decimal(0x%x,0x%x) (90Hz)\n",
-				gamma_cfg->flash_read_checksum[0],
-				gamma_cfg->flash_read_checksum[1]);
-	count += snprintf(buf + count, size - count,
-				"Gamma Flash Read 344 Parameter SUM(0x%x) (90Hz)\n",
-				gamma_cfg->gamma_checksum);
-
-	mutex_unlock(&panel->panel_lock);
-
-	return count;
-}
-
-int mi_dsi_panel_read_flatmode_param(struct dsi_panel *panel)
-{
-	int rc = 0;
-	struct mi_dsi_panel_cfg *mi_cfg;
-	unsigned long mode_flags_backup = 0;
-	ssize_t read_len = 0;
-	uint request_rx_len = 0;
-	u8 read_buf[16] = {0};
-	int i = 0;
-
-	if (!panel) {
-		DISP_ERROR("invalid params\n");
-		return -EINVAL;
-	}
-
-	mutex_lock(&panel->panel_lock);
-	mi_cfg = &panel->mi_cfg;
-
-	if (!mi_cfg->flatmode_update_flag) {
-		DISP_DEBUG("[%s] flatmode_update_flag is not configed\n", panel->type);
+	if (flatmode_cfg->update_done) {
+		DISP_DEBUG("flatmode param already updated\n");
 		rc = 0;
 		goto exit;
 	}
@@ -1226,30 +670,327 @@ int mi_dsi_panel_read_flatmode_param(struct dsi_panel *panel)
 		goto exit;
 	}
 
+	DISP_INFO("[%s][%s] flatmode param update start\n",
+				panel->type, panel->name);
+
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_FLAT_MODE_READ_PRE);
-	if (rc)
-		DSI_ERR("[%s] failed to send DSI_CMD_SET_MI_FLAT_MODE_READ_PRE cmds, rc=%d\n",
-				  panel->name, rc);
+	if (rc) {
+		DSI_ERR("[%s][%s] failed to send DSI_CMD_SET_MI_FLAT_MODE_READ_PRE cmds, rc=%d\n",
+			panel->type, panel->name, rc);
+		goto exit;
+	}
+
+	if (sizeof(read_buf) >= sizeof(flatmode_cfg->flatmode_param)) {
+		request_rx_len = sizeof(flatmode_cfg->flatmode_param);
+	} else {
+		DISP_ERROR("please check flatmode 0xB8 read_buf size, must > or = %d\n",
+			sizeof(flatmode_cfg->flatmode_param));
+		rc = -EAGAIN;
+		goto exit;
+	}
+	DISP_INFO("[%s][%s] read flatmode 0xB8 paramter length is %d\n",
+		panel->type, panel->name, request_rx_len);
 
 	mode_flags_backup = panel->mipi_device.mode_flags;
 	panel->mipi_device.mode_flags |= MIPI_DSI_MODE_LPM;
-	request_rx_len = min(sizeof(mi_cfg->flatmode_cfg.flatmode_param), sizeof(read_buf));
-	DISP_INFO("[%s][%s]read flatmode paramter length is %d\n",
-		panel->type, panel->name, request_rx_len);
+	request_rx_len = min(sizeof(flatmode_cfg->flatmode_param), sizeof(read_buf));
 	read_len = mipi_dsi_dcs_read(&panel->mipi_device, 0xB8, read_buf,
 		request_rx_len);
 	panel->mipi_device.mode_flags = mode_flags_backup;
 	if (read_len == request_rx_len) {
+		memcpy(flatmode_cfg->flatmode_param, read_buf, read_len);
 		for (i = 0; i < read_len; i++) {
-			DISP_INFO("read flatmode_param[%d] = 0x%02x\n",
-				i, mi_cfg->flatmode_cfg.flatmode_param[i]);
+			DISP_INFO("read flatmode param[%d] = 0x%02x\n",
+				i, flatmode_cfg->flatmode_param[i]);
 		}
-		memcpy(mi_cfg->flatmode_cfg.flatmode_param, read_buf, read_len);
-		mi_cfg->flatmode_cfg.read_done = true;
 	} else {
-		DISP_INFO("read failed (%d)\n", read_len);
+		DISP_INFO("read flatmode failed (%d)\n", read_len);
 		rc = -EINVAL;
+		goto exit;
 	}
+
+	if (flatmode_cfg->update_index < 0) {
+		DISP_INFO("[%s][%s] flatmode invalid index\n",
+			panel->type, panel->name);
+		rc = -EINVAL;
+		goto exit;
+	}
+
+	DISP_INFO("[%s][%s] 0xB9 flatmode update parameter index(%d)\n",
+			panel->type, panel->name, flatmode_cfg->update_index);
+
+	num_display_modes = panel->num_display_modes;
+	display = to_dsi_display(panel->host);
+	if (!display || !display->modes) {
+		DISP_ERROR("invalid display or display->modes ptr\n");
+		rc = -EINVAL;
+		goto exit;
+	}
+
+	for (i = 0; i < num_display_modes; i++) {
+		mode = &display->modes[i];
+		priv_info = mode->priv_info;
+		cmds = priv_info->cmd_sets[DSI_CMD_SET_MI_FLAT_MODE_ON].cmds;
+		count = priv_info->cmd_sets[DSI_CMD_SET_MI_FLAT_MODE_ON].count;
+		if (cmds && count >= flatmode_cfg->update_index) {
+			tx_buf = (u8 *)cmds[flatmode_cfg->update_index].msg.tx_buf;
+			if (tx_buf && tx_buf[0] == 0xB9) {
+				tx_len = cmds[flatmode_cfg->update_index].msg.tx_len;
+				param_len = min(sizeof(flatmode_cfg->flatmode_param), tx_len - 1);
+				memcpy(&tx_buf[1], flatmode_cfg->flatmode_param, param_len);
+			} else {
+				if (tx_buf) {
+					DISP_ERROR("%s panel tx_buf[0] = 0x%02X, check cmd[%s]\n",
+						panel->type, tx_buf[0], cmd_set_prop_map[DSI_CMD_SET_MI_DC_ON]);
+				} else {
+					DISP_ERROR("%s panel tx_buf is NULL pointer\n", panel->type);
+				}
+				rc = -EINVAL;
+				goto exit;
+			}
+		} else {
+			DISP_ERROR("%s panel cmd[%s] index(%d) error\n",
+				panel->type, cmd_set_prop_map[DSI_CMD_SET_MI_FLAT_MODE_ON],
+				flatmode_cfg->update_index);
+			rc = -EINVAL;
+			goto exit;
+		}
+	}
+
+	flatmode_cfg->update_done = true;
+	DISP_INFO("[%s][%s] flatmode param update end\n",
+			panel->type, panel->name);
+
+exit:
+	mutex_unlock(&panel->panel_lock);
+	return rc;
+}
+
+int mi_dsi_panel_read_and_update_dc_param(struct dsi_panel *panel)
+{
+	int rc = 0;
+	struct dc_lut_cfg *dc_cfg = NULL;
+	struct dsi_display_mode_priv_info *priv_info;
+	struct dsi_cmd_desc *cmds = NULL;
+	struct dsi_display *display;
+	struct dsi_display_mode *mode;
+	unsigned long mode_flags_backup = 0;
+	u32 num_display_modes;
+	u8 read_dc_reg = 0;
+	u8 read_count = 0;
+	ssize_t read_len = 0;
+	uint request_rx_len = 0;
+	u8 read_buf[80] = {0};
+	int i = 0, j = 0;
+	u32 count;
+	u8 *tx_buf;
+	size_t tx_len;
+	u32 param_len;
+
+	if (!panel || !panel->host) {
+		DISP_ERROR("invalid params\n");
+		return -EINVAL;
+	}
+
+	if (!panel->mi_cfg.dc_update_flag) {
+		DISP_DEBUG("[%s] dc_update_flag is not configed\n", panel->type);
+		return 0;
+	}
+
+	mutex_lock(&panel->panel_lock);
+
+	dc_cfg = &panel->mi_cfg.dc_cfg;
+	if (dc_cfg->update_done) {
+		DISP_DEBUG("DC param already updated\n");
+		rc = 0;
+		goto exit;
+	}
+
+	if (!panel->panel_initialized) {
+		DISP_ERROR("[%s] Panel not initialized\n", panel->type);
+		rc = -EINVAL;
+		goto exit;
+	}
+
+	DISP_INFO("[%s] DC param update start\n", panel->type);
+
+	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_SWITCH_PAGE4);
+	if (rc) {
+		DISP_ERROR("[%s] failed to send DSI_CMD_SET_MI_SWITCH_PAGE4 cmd\n",
+			panel->type);
+		goto exit;
+	}
+
+	for (read_count = DC_LUT_60HZ; read_count < DC_LUT_MAX; read_count++) {
+		if (read_count == DC_LUT_60HZ) {
+			read_dc_reg = 0xD2;
+		} else {
+			read_dc_reg = 0xD4;
+		}
+
+		if (sizeof(read_buf) >= sizeof(dc_cfg->exit_dc_lut[read_count])) {
+			request_rx_len = sizeof(dc_cfg->exit_dc_lut[read_count]);
+		} else {
+			DISP_ERROR("please check 0x%02X read_buf size, must > or = %d\n",
+				read_dc_reg, sizeof(dc_cfg->exit_dc_lut[read_count]));
+			rc = -EAGAIN;
+			goto exit;
+		}
+		DISP_INFO("[%s]read DC 0x%02X paramter length is %d\n",
+			panel->type, read_dc_reg, request_rx_len);
+
+		mode_flags_backup = panel->mipi_device.mode_flags;
+		panel->mipi_device.mode_flags |= MIPI_DSI_MODE_LPM;
+		read_len = mipi_dsi_dcs_read(&panel->mipi_device, read_dc_reg,
+			read_buf, request_rx_len);
+		panel->mipi_device.mode_flags = mode_flags_backup;
+		if (read_len == request_rx_len) {
+			memcpy(dc_cfg->exit_dc_lut[read_count], read_buf, read_len);
+			for (i = 0; i < sizeof(dc_cfg->exit_dc_lut[read_count]); i++) {
+				DISP_DEBUG("DC 0x%02X exit_dc_lut[%d] = 0x%02X\n",
+					read_dc_reg, i, dc_cfg->exit_dc_lut[read_count][i]);
+			}
+		} else {
+			DISP_INFO("read DC 0x%02X failed (%d)\n", read_dc_reg, read_len);
+			rc = -EAGAIN;
+			goto exit;
+		}
+
+		memcpy(dc_cfg->enter_dc_lut[read_count], dc_cfg->exit_dc_lut[read_count],
+				sizeof(dc_cfg->exit_dc_lut[read_count]));
+		for (i = 0; i < sizeof(dc_cfg->enter_dc_lut[read_count])/5; i++) {
+			for (j = i * 5; j < ((i + 1) * 5 - 1) ; j++) {
+				dc_cfg->enter_dc_lut[read_count][j] =
+					dc_cfg->exit_dc_lut[read_count][(i + 1) * 5 - 2];
+			}
+		}
+		for (i = 0; i < sizeof(dc_cfg->enter_dc_lut[read_count]); i++) {
+			DISP_DEBUG("DC 0x%02X enter_dc_lut[%d] = 0x%02X\n",
+				read_dc_reg, i, dc_cfg->enter_dc_lut[read_count][i]);
+		}
+		DISP_INFO("[%s] DC 0x%02X parameter read done\n",
+			panel->type, read_dc_reg);
+
+		if (dc_cfg->dc_on_index[read_count] < 0 ||
+			dc_cfg->dc_off_index[read_count] < 0) {
+			DISP_INFO("[%s] DC 0x%02X invalid index\n",
+					panel->type, read_dc_reg);
+			rc = -EINVAL;
+			goto exit;
+		}
+		DISP_INFO("[%s] 0x%02X dc_on_index(%d), dc_off_index(%d)\n",
+			panel->type, read_dc_reg,
+			dc_cfg->dc_on_index[read_count],
+			dc_cfg->dc_off_index[read_count]);
+	}
+
+	num_display_modes = panel->num_display_modes;
+	display = to_dsi_display(panel->host);
+	if (!display || !display->modes) {
+		DISP_ERROR("invalid display or display->modes ptr\n");
+		rc = -EINVAL;
+		goto exit;
+	}
+
+	for (i = 0; i < num_display_modes; i++) {
+		mode = &display->modes[i];
+		if (mode->timing.refresh_rate == 60 ||
+			mode->timing.refresh_rate == 120) {
+			DISP_INFO("[%s] update %d fps DC cmd\n", panel->type,
+				mode->timing.refresh_rate);
+		} else {
+			DISP_ERROR("[%s] %d is not support fps\n", panel->type,
+				mode->timing.refresh_rate);
+			continue;
+		}
+
+		priv_info = mode->priv_info;
+		cmds = priv_info->cmd_sets[DSI_CMD_SET_MI_DC_ON].cmds;
+		count = priv_info->cmd_sets[DSI_CMD_SET_MI_DC_ON].count;
+		if (cmds && count >= dc_cfg->dc_on_index[DC_LUT_60HZ]
+			&& count >= dc_cfg->dc_on_index[DC_LUT_120HZ]) {
+			tx_buf = (u8 *)cmds[dc_cfg->dc_on_index[DC_LUT_60HZ]].msg.tx_buf;
+			if (tx_buf && tx_buf[0] == 0xD2) {
+				tx_len = cmds[dc_cfg->dc_on_index[DC_LUT_60HZ]].msg.tx_len;
+				param_len = min(sizeof(dc_cfg->enter_dc_lut[DC_LUT_60HZ]), tx_len - 1);
+				memcpy(&tx_buf[1], dc_cfg->enter_dc_lut[DC_LUT_60HZ], param_len);
+			} else {
+				if (tx_buf) {
+					DISP_ERROR("[%s] panel tx_buf[0] = 0x%02X, check cmd[%s]\n",
+						panel->type, tx_buf[0], cmd_set_prop_map[DSI_CMD_SET_MI_DC_ON]);
+				} else {
+					DISP_ERROR("[%s] panel tx_buf is NULL pointer\n", panel->type);
+				}
+				rc = -EINVAL;
+				goto exit;
+			}
+			tx_buf = (u8 *)cmds[dc_cfg->dc_on_index[DC_LUT_120HZ]].msg.tx_buf;
+			if (tx_buf && tx_buf[0] == 0xD4) {
+				tx_len = cmds[dc_cfg->dc_on_index[DC_LUT_120HZ]].msg.tx_len;
+				param_len = min(sizeof(dc_cfg->enter_dc_lut[DC_LUT_120HZ]), tx_len - 1);
+				memcpy(&tx_buf[1], dc_cfg->enter_dc_lut[DC_LUT_120HZ], param_len);
+			} else {
+				if (tx_buf) {
+					DISP_ERROR("[%s] panel tx_buf[0] = 0x%02X, check cmd[%s]\n",
+						panel->type, tx_buf[0], cmd_set_prop_map[DSI_CMD_SET_MI_DC_ON]);
+				} else {
+					DISP_ERROR("[%s] panel tx_buf is NULL pointer\n", panel->type);
+				}
+				rc = -EINVAL;
+				goto exit;
+			}
+		} else {
+			DISP_ERROR("[%s] panel cmd[%s] index error\n",
+				panel->type, cmd_set_prop_map[DSI_CMD_SET_MI_DC_ON]);
+			rc = -EINVAL;
+			goto exit;
+		}
+
+		cmds = priv_info->cmd_sets[DSI_CMD_SET_MI_DC_OFF].cmds;
+		count = priv_info->cmd_sets[DSI_CMD_SET_MI_DC_OFF].count;
+		if (cmds && count >= dc_cfg->dc_off_index[DC_LUT_60HZ]
+			&& count >= dc_cfg->dc_off_index[DC_LUT_120HZ]) {
+			tx_buf = (u8 *)cmds[dc_cfg->dc_off_index[DC_LUT_60HZ]].msg.tx_buf;
+			if (tx_buf && tx_buf[0] == 0xD2) {
+				tx_len = cmds[dc_cfg->dc_off_index[DC_LUT_60HZ]].msg.tx_len;
+				param_len = min(sizeof(dc_cfg->exit_dc_lut[DC_LUT_60HZ]), tx_len - 1);
+				memcpy(&tx_buf[1], dc_cfg->exit_dc_lut[DC_LUT_60HZ], param_len);
+			} else {
+				if (tx_buf) {
+					DISP_ERROR("[%s] panel tx_buf[0] = 0x%02X, check cmd[%s]\n",
+						panel->type, tx_buf[0], cmd_set_prop_map[DSI_CMD_SET_MI_DC_OFF]);
+				} else {
+					DISP_ERROR("[%s] panel tx_buf is NULL pointer\n", panel->type);
+				}
+				rc = -EINVAL;
+				goto exit;
+			}
+			tx_buf = (u8 *)cmds[dc_cfg->dc_off_index[DC_LUT_120HZ]].msg.tx_buf;
+			if (tx_buf && tx_buf[0] == 0xD4) {
+				tx_len = cmds[dc_cfg->dc_off_index[DC_LUT_120HZ]].msg.tx_len;
+				param_len = min(sizeof(dc_cfg->exit_dc_lut[DC_LUT_120HZ]), tx_len - 1);
+				memcpy(&tx_buf[1], dc_cfg->exit_dc_lut[DC_LUT_120HZ], param_len);
+			} else {
+				if (tx_buf) {
+					DISP_ERROR("[%s] panel tx_buf[0] = 0x%02X, check cmd[%s]\n",
+						panel->type, tx_buf[0], cmd_set_prop_map[DSI_CMD_SET_MI_DC_OFF]);
+				} else {
+					DISP_ERROR("[%s] panel tx_buf is NULL pointer\n", panel->type);
+				}
+				rc = -EINVAL;
+				goto exit;
+			}
+		} else {
+			DISP_ERROR("[%s] panel cmd[%s] index error\n",
+				panel->type, cmd_set_prop_map[DSI_CMD_SET_MI_DC_OFF]);
+			rc = -EINVAL;
+			goto exit;
+		}
+	}
+
+	dc_cfg->update_done = true;
+	DISP_INFO("[%s] DC param update end\n", panel->type);
+
 exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -1316,6 +1057,7 @@ int mi_dsi_panel_set_doze_brightness(struct dsi_panel *panel,
 				dsi->mode_flags = mode_flags;
 		} else {
 			if (doze_brightness == DOZE_BRIGHTNESS_HBM) {
+				mi_cfg->aod_brightness_work_flag = true;
 				mi_dsi_update_hbm_cmd_51reg(panel, DSI_CMD_SET_MI_DOZE_HBM, mi_cfg->last_no_zero_bl_level);
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_DOZE_HBM);
 				if (rc) {
@@ -1325,6 +1067,7 @@ int mi_dsi_panel_set_doze_brightness(struct dsi_panel *panel,
 				mi_dsi_update_micfg_flags(panel, PANEL_DOZE_HIGH);
 				mi_cfg->doze_brightness_backup = DOZE_BRIGHTNESS_HBM;
 			} else if (doze_brightness == DOZE_BRIGHTNESS_LBM) {
+				mi_cfg->aod_brightness_work_flag = true;
 				mi_dsi_update_hbm_cmd_51reg(panel, DSI_CMD_SET_MI_DOZE_LBM, mi_cfg->last_no_zero_bl_level);
 				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_DOZE_LBM);
 				if (rc) {
@@ -1333,6 +1076,8 @@ int mi_dsi_panel_set_doze_brightness(struct dsi_panel *panel,
 				}
 				mi_dsi_update_micfg_flags(panel, PANEL_DOZE_LOW);
 				mi_cfg->doze_brightness_backup = DOZE_BRIGHTNESS_LBM;
+			} else if (doze_brightness == DOZE_TO_NORMAL) {
+				mi_cfg->aod_brightness_work_flag = false;
 			}
 		}
 
@@ -1847,6 +1592,32 @@ int mi_dsi_fps_switch(struct dsi_panel *panel)
 	return rc;
 }
 
+int mi_dsi_set_bic_reg(struct dsi_panel *panel)
+{
+	struct dsi_cmd_desc *cmds = NULL;
+	u32 count;
+	u8 *tx_buf;
+	int i = 0;
+	int rc = 0;
+
+	if (panel->mi_cfg.nvt_bic_enabled && panel->mi_cfg.nvt_bic_reg_transfer_finshed) {
+		cmds = panel->cur_mode->priv_info->cmd_sets[DSI_CMD_SET_POST_ON].cmds;
+		count = panel->cur_mode->priv_info->cmd_sets[DSI_CMD_SET_POST_ON].count;
+		if (cmds && count >= panel->mi_cfg.nvt_bic_post_on_d0_index
+			&& panel->mi_cfg.nvt_bic_post_on_d0_index >= 0) {
+			tx_buf = (u8 *)cmds[panel->mi_cfg.nvt_bic_post_on_d0_index].msg.tx_buf;
+			if (tx_buf && tx_buf[0] == 0xD0) {
+				for (i =1; i <= sizeof(panel->mi_cfg.bic_reg_data); i++)
+					tx_buf[i] = panel->mi_cfg.bic_reg_data[i-1];
+				DISP_INFO("enter DSI_CMD_SET_POST_ON\n");
+				rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_POST_ON);
+			}
+		}
+	}
+
+	return rc;
+}
+
 static int mi_dsi_update_hbm_cmd_87reg(struct dsi_panel *panel,
 			enum dsi_cmd_set_type type, int bl_lvl)
 {
@@ -1898,55 +1669,7 @@ static int mi_dsi_update_hbm_cmd_87reg(struct dsi_panel *panel,
 		tx_buf = (u8 *)cmds[index].msg.tx_buf;
 		if (tx_buf && tx_buf[0] == 0x87) {
 			tx_buf[1] = (aa_alpha_set[bl_lvl] >> 8) & 0x0f;
-			if (mi_cfg->panel_id == 0x4B3800420200) {
-				if (bl_lvl <= 800 && bl_lvl > 524) {
-					if (((aa_alpha_set[bl_lvl] & 0xff) + 0x01) <= 0xff)
-						tx_buf[2] = (aa_alpha_set[bl_lvl] & 0xff) + 0x01;
-					else {
-						tx_buf[1] = ((aa_alpha_set[bl_lvl] >> 8) & 0x0f) + 0x01;
-						tx_buf[2] = (aa_alpha_set[bl_lvl] & 0xff) +0x01 -0xff;
-					}
-				} else if (bl_lvl <= 524 && bl_lvl > 400) {
-					if (((aa_alpha_set[bl_lvl] & 0xff) + 0x01) <= 0xff)
-						tx_buf[2] = (aa_alpha_set[bl_lvl] & 0xff) + 0x01;
-					else {
-						tx_buf[1] = ((aa_alpha_set[bl_lvl] >> 8) & 0x0f) + 0x01;
-						tx_buf[2] = (aa_alpha_set[bl_lvl] & 0xff) +0x01 -0xff;
-					}
-				}  else if (bl_lvl <= 400 && bl_lvl > 300) {
-					if (((aa_alpha_set[bl_lvl] & 0xff) + 0x03) <= 0xff)
-						tx_buf[2] = (aa_alpha_set[bl_lvl] & 0xff) + 0x03;
-					else {
-						tx_buf[1] = ((aa_alpha_set[bl_lvl] >> 8) & 0x0f) + 0x01;
-						tx_buf[2] = (aa_alpha_set[bl_lvl] & 0xff) +0x03 -0xff;
-					}
-				}else if (bl_lvl <= 300 && bl_lvl > 200) {
-					if (((aa_alpha_set[bl_lvl] & 0xff) + 0x02) <= 0xff)
-						tx_buf[2] = (aa_alpha_set[bl_lvl] & 0xff) + 0x02;
-					else {
-						tx_buf[1] = ((aa_alpha_set[bl_lvl] >> 8) & 0x0f) + 0x01;
-						tx_buf[2] = (aa_alpha_set[bl_lvl] & 0xff) +0x02 -0xff;
-					}
-				} else if (bl_lvl <= 200 && bl_lvl > 100) {
-					if (((aa_alpha_set[bl_lvl] & 0xff) + 0x03) <= 0xff)
-						tx_buf[2] = (aa_alpha_set[bl_lvl] & 0xff) + 0x03;
-					else {
-						tx_buf[1] = ((aa_alpha_set[bl_lvl] >> 8) & 0x0f) + 0x01;
-						tx_buf[2] = (aa_alpha_set[bl_lvl] & 0xff) +0x03 -0xff;
-					}
-				} else if (bl_lvl <= 100) {
-					if (((aa_alpha_set[bl_lvl] & 0xff) + 0x02) <= 0xff)
-						tx_buf[2] = (aa_alpha_set[bl_lvl] & 0xff) + 0x02;
-					else {
-						tx_buf[1] = ((aa_alpha_set[bl_lvl] >> 8) & 0x0f) + 0x01;
-						tx_buf[2] = (aa_alpha_set[bl_lvl] & 0xff) +0x02 -0xff;
-					}
-				} else {
-					tx_buf[2] = aa_alpha_set[bl_lvl] & 0xff;
-				}
-			} else {
-				tx_buf[2] = cup_alpha_set[bl_lvl] & 0xff;
-			}
+			tx_buf[2] = aa_alpha_set[bl_lvl] & 0xff;
 			//DISP_INFO("panel aa cmd[0x%02x] = 0x%02x 0x%02x\n", tx_buf[0], tx_buf[1], tx_buf[2]);
 		} else {
 			if (tx_buf) {
@@ -1970,32 +1693,7 @@ static int mi_dsi_update_hbm_cmd_87reg(struct dsi_panel *panel,
 		tx_buf = (u8 *)cmds[index + 2].msg.tx_buf;
 		if (tx_buf && tx_buf[0] == 0x87) {
 			tx_buf[1] = (cup_alpha_set[bl_lvl] >> 8) & 0x0f;
-			if (mi_cfg->panel_id == 0x4B3800420200) {
-				if (bl_lvl <= 800 && bl_lvl > 577) {
-					if ((cup_alpha_set[bl_lvl] & 0xff) >= 0x02)
-						tx_buf[2] = (cup_alpha_set[bl_lvl] & 0xff) - 0x02;
-					else {
-						tx_buf[1] = ((cup_alpha_set[bl_lvl] >> 8) & 0x0f) -0x01;
-						tx_buf[2] = 0xff +(cup_alpha_set[bl_lvl] & 0xff) -0x02 ;
-					}
-				} else if (bl_lvl <= 577 && bl_lvl > 126) {
-					tx_buf[2] = (cup_alpha_set[bl_lvl] & 0xff);
-				} else if (bl_lvl <= 126) {
-					if ((cup_alpha_set[bl_lvl] & 0xff) >= 0x02)
-						tx_buf[2] = (cup_alpha_set[bl_lvl] & 0xff) - 0x02;
-					else {
-						if (((cup_alpha_set[bl_lvl] >> 8) & 0x0f) > 0x01) {
-							tx_buf[1] = ((cup_alpha_set[bl_lvl] >> 8) & 0x0f) -0x01;
-							tx_buf[2] = 0xff +(cup_alpha_set[bl_lvl] & 0xff) -0x02 ;
-						} else
-							tx_buf[2] = 0x00;
-					}
-				} else {
-					tx_buf[2] = cup_alpha_set[bl_lvl] & 0xff;
-				}
-			} else {
-				tx_buf[2] = cup_alpha_set[bl_lvl] & 0xff;
-			}
+			tx_buf[2] = cup_alpha_set[bl_lvl] & 0xff;
 			//DISP_INFO("panel cup cmd[0x%02x] = 0x%02x 0x%02x\n", tx_buf[0], tx_buf[1], tx_buf[2]);
 		} else {
 			if (tx_buf) {
@@ -2113,66 +1811,6 @@ bool mi_dsi_panel_is_need_tx_cmd(u32 feature_id)
 		return true;
 	}
 }
-
-static int mi_dsi_update_flatmode_cmd(struct dsi_panel *panel,
-		enum dsi_cmd_set_type type)
-{
-	int rc = 0;
-	struct dsi_display_mode_priv_info *priv_info;
-	struct dsi_cmd_desc *cmds = NULL;
-	struct flatmode_cfg *flatmode_cfg  = NULL;
-	u32 count;
-	int index;
-	u8 *tx_buf;
-	size_t tx_len;
-	u32 param_len;
-
-	if (!panel->mi_cfg.flatmode_update_flag || !panel->mi_cfg.flatmode_cfg.read_done) {
-		DISP_ERROR("please check flatmode params update\n");
-		return -EINVAL;
-	}
-
-	if (!panel || !panel->cur_mode || !panel->cur_mode->priv_info) {
-		DISP_ERROR("invalid params\n");
-		return -EINVAL;
-
-	}
-
-	flatmode_cfg = &panel->mi_cfg.flatmode_cfg;
-	priv_info = panel->cur_mode->priv_info;
-	index = flatmode_cfg->update_index;
-	if (index < 0) {
-		DISP_INFO("%s panel cmd[%s] update not supported\n",
-				panel->type, cmd_set_prop_map[type]);
-		return 0;
-	}
-
-	cmds = priv_info->cmd_sets[type].cmds;
-	count = priv_info->cmd_sets[type].count;
-	if (cmds && count >= index) {
-		tx_buf = (u8 *)cmds[index].msg.tx_buf;
-		if (tx_buf && tx_buf[0] == 0xB9) {
-			tx_len = cmds[index].msg.tx_len;
-			param_len = min(sizeof(flatmode_cfg->flatmode_param), tx_len - 1);
-			memcpy(&tx_buf[1], flatmode_cfg->flatmode_param, param_len);
-		} else {
-			if (tx_buf) {
-				DISP_ERROR("%s panel tx_buf[0] = 0x%02X, check cmd[%s]\n",
-					panel->type, tx_buf[0], cmd_set_prop_map[type]);
-			} else {
-				DISP_ERROR("%s panel tx_buf is NULL pointer\n", panel->type);
-			}
-			rc = -EINVAL;
-		}
-	} else {
-		DISP_ERROR("%s panel cmd[%s] index(%d) error\n",
-			panel->type, cmd_set_prop_map[type], index);
-		rc = -EINVAL;
-	}
-
-	return rc;
-}
-
 
 int mi_dsi_panel_set_disp_param(struct dsi_panel *panel, struct disp_feature_ctl *ctl)
 {
@@ -2353,8 +1991,6 @@ int mi_dsi_panel_set_disp_param(struct dsi_panel *panel, struct disp_feature_ctl
 		break;
 	case DISP_FEATURE_FLAT_MODE:
 		if (ctl->feature_val == FEATURE_ON) {
-			if (mi_cfg->flatmode_update_flag)
-				mi_dsi_update_flatmode_cmd(panel, DSI_CMD_SET_MI_FLAT_MODE_ON);
 			dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_FLAT_MODE_ON);
 		} else {
 			dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_FLAT_MODE_OFF);
@@ -2678,22 +2314,27 @@ int mi_dsi_panel_set_disp_param(struct dsi_panel *panel, struct disp_feature_ctl
 		DISP_INFO("DC backlight:%d\n", ctl->feature_val);
 		mi_dsi_update_dc_backlight(panel, ctl->feature_val);
 		break;
-	case DISP_FEATURE_GIR:
-		DISP_INFO("DISP_FEATURE_GIR ON:%d\n", ctl->feature_val);
-		if (ctl->feature_val == FEATURE_ON) {
-			if (mi_cfg->flatmode_update_flag)
-				DISP_INFO("disp feature GIR ON:%d update flatmode\n", ctl->feature_val);
-				mi_dsi_update_flatmode_cmd(panel, DSI_CMD_SET_MI_FLAT_MODE_ON);
-		}
-		mi_cfg->feature_val[DISP_FEATURE_GIR] = ctl->feature_val;
-        break;
-	case DISP_FEATURE_DBI:
-		DISP_INFO("DISP_FEATURE_DBI: %d\n", ctl->feature_val);
-		mi_cfg->feature_val[DISP_FEATURE_DBI] = ctl->feature_val;
-		if (dsi_panel_initialized(panel)) {
-			mi_dsi_panel_set_cup_dbi(panel, ctl->feature_val);
+	case DISP_FEATURE_BIC:
+		DISP_INFO("BIC read state:%d\n", ctl->feature_val);
+		mi_cfg->feature_val[DISP_FEATURE_BIC] = ctl->feature_val;
+		if (panel->mi_cfg.feature_val[DISP_FEATURE_BIC] == BIC_READ_NEED_RIGHT_NOW)
+			mi_dsi_panel_read_nvt_bic(panel);
+		else if (panel->mi_cfg.feature_val[DISP_FEATURE_BIC] == BIC_UPDAT_REG_RIGHT_NOW) {
+			mi_dsi_set_bic_reg(panel);
 		}
 		break;
+	case DISP_FEATURE_GIR:
+		if (!mi_cfg->aod_brightness_work_flag) {
+			DISP_INFO("DISP_FEATURE_GIR ON:%d\n", ctl->feature_val);
+			mi_cfg->feature_val[DISP_FEATURE_GIR] = ctl->feature_val;
+			if  (mi_cfg->feature_val[DISP_FEATURE_GIR] == FEATURE_ON && mi_cfg->gir_enabled) {
+				DISP_INFO("force re-enable gir mode\n");
+				mi_cfg->gir_enabled = false;
+			}
+		} else {
+			DISP_INFO("DISP_FEATURE_GIR skip set on for aod flag %d\n", mi_cfg->aod_brightness_work_flag);
+		}
+        break;
 	default:
 		DISP_ERROR("invalid feature id\n");
 		break;
@@ -3382,34 +3023,134 @@ EXIT_WRITE:
 	return ret;
 }
 
-int mi_dsi_panel_set_cup_dbi(struct dsi_panel *panel, int value)
+int mi_dsi_panel_read_nvt_bic(struct dsi_panel *panel)
 {
-	struct dsi_cmd_desc *cmds = NULL;
-	u32 count;
-	u8 *tx_buf;
-	int i = 0;
-	int rc = 0;
+	struct disp_event event;
+	struct dsi_display *display;
+	struct dsi_display_ctrl *ctrl;
+	struct dsi_display_mode *mode;
+	int time = 0;
+	unsigned long mode_flags_backup = 0;
+	int read_length = NVT_BIC_LENGTH;
+	int read_count = 0;
+	char buffer[10];
+	int ret = 0;
 
-	if (panel->mi_cfg.cup_dbi_reg_index < 0) {
-		DISP_ERROR("[%s][%s] CUP DBI register invalid index\n");
-		rc = -EINVAL;
-		return rc;
+	if (!panel || !panel->host) {
+		DISP_ERROR("invalid params\n");
+		return -EINVAL;
 	}
 
-	DISP_INFO("DBI set value 0x%02x\n", value);
+	display = to_dsi_display(panel->host);
+	if (display == NULL)
+		return -EINVAL;
 
-	cmds = panel->cur_mode->priv_info->cmd_sets[DSI_CMD_SET_MI_CUP_DBI].cmds;
-	count = panel->cur_mode->priv_info->cmd_sets[DSI_CMD_SET_MI_CUP_DBI].count;
-	if (cmds && count >= panel->mi_cfg.cup_dbi_reg_index) {
-		tx_buf = (u8 *)cmds[panel->mi_cfg.cup_dbi_reg_index].msg.tx_buf;
-		if (tx_buf && tx_buf[0] == 0xD2) {
-			for (i = 8; i <= 11; i++)
-				tx_buf[i] = value;
-			DISP_INFO("enter DSI_CMD_SET_MI_CUP_DBI\n");
-			rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_CUP_DBI);
+	if (!panel->panel_initialized) {
+		DISP_ERROR("[%s] Panel not initialized\n", panel->type);
+		return -EINVAL;
+	}
+
+	mode = panel->cur_mode;
+	ctrl = &display->ctrl[display->cmd_master_idx];
+
+	ret = dsi_display_clk_ctrl(display->dsi_clk_handle, DSI_ALL_CLKS, DSI_CLK_ON);
+	if (ret) {
+		DISP_ERROR("[%s] failed to enable DSI clocks, ret=%d\n", display->name, ret);
+		goto unlock;
+	}
+
+	ret = dsi_display_cmd_engine_enable(display);
+	if (ret) {
+		DISP_ERROR("[%s] failed to enable cmd engine, ret=%d\n",
+		       display->name, ret);
+		goto error_disable_clks;
+	}
+
+	if (display->tx_cmd_buf == NULL) {
+		ret = dsi_host_alloc_cmd_tx_buffer(display);
+		if (ret) {
+			DISP_ERROR("failed to allocate cmd tx buffer memory\n");
+			goto error_disable_cmd_engine;
 		}
 	}
 
-	return 0;
+	/* Step1: write 0x28 and settings before read bic */
+	ret = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_BIC_READ_PRE);
+	if (ret) {
+		DISP_ERROR("Failed to send DSI_CMD_SET_MI_BIC_READ_PRE command\n");
+		ret = -EAGAIN;
+		goto error_disable_cmd_engine;
+	}
+
+	/* Step2: read */
+	DISP_INFO("read bic start...\n");
+	mode_flags_backup = panel->mipi_device.mode_flags;
+	panel->mipi_device.mode_flags |= MIPI_DSI_MODE_LPM;
+	while (read_length > 0) {
+		memset(buffer, 0, 10);
+		if (read_count == 0)
+			ret = mipi_dsi_dcs_read(&panel->mipi_device, 0x4E, buffer, 10);
+		else
+			ret = mipi_dsi_dcs_read(&panel->mipi_device, 0x5E, buffer, 10);
+		if (ret == 0) {
+			DISP_ERROR("%s error\n");
+			memset(read_result, 0, NVT_BIC_LENGTH);
+			break;
+		}
+		memcpy(read_result + read_count * 10, buffer, 10);
+		read_count++;
+		read_length -= 10;
+	}
+	panel->mipi_device.mode_flags = mode_flags_backup;
+	DISP_INFO("read bic end...\n");
+
+	panel->mi_cfg.bic_data = read_result;
+	panel->mi_cfg.bic_data_size = sizeof(read_result);
+
+	/* Step3: After read finished send 0x10 */
+	panel->mi_cfg.feature_val[DISP_FEATURE_BIC] = BIC_READ_FINISHED;
+	ret = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_MI_BIC_READ_FINISH);
+	if (ret) {
+		DISP_ERROR("Failed to send DSI_CMD_SET_MI_BIC_READ_FINISH command\n");
+		ret = -EAGAIN;
+		goto error_disable_cmd_engine;
+	}
+
+	/* Step4: notify to df */
+	time++;
+	event.disp_id = 0;
+	event.type = MI_DISP_EVENT_BIC;
+	event.length = sizeof(time);
+	mi_disp_feature_event_notify(&event, (u8 *)&time);
+
+error_disable_cmd_engine:
+	ret = dsi_display_cmd_engine_disable(display);
+	if (ret) {
+		DISP_ERROR("[%s]failed to disable DSI cmd engine, rc=%d\n",
+				display->name, ret);
+	}
+error_disable_clks:
+	ret = dsi_display_clk_ctrl(display->dsi_clk_handle,
+			DSI_ALL_CLKS, DSI_CLK_OFF);
+	if (ret) {
+		DISP_ERROR("[%s] failed to disable all DSI clocks, rc=%d\n",
+			   display->name, ret);
+	}
+unlock:
+
+	return ret;
+}
+
+char *mi_dsi_panel_get_bic_data_info(int * bic_len)
+{
+	*bic_len = sizeof(read_result);
+	DISP_INFO("sizeof(read_result):%d\n", sizeof(read_result));
+
+	return read_result;
+}
+
+char *mi_dsi_panel_get_bic_reg_data_array(struct dsi_panel *panel)
+{
+	return panel->mi_cfg.bic_reg_data;
 }
 

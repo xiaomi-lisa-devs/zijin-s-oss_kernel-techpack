@@ -8288,25 +8288,21 @@ int dsi_display_enable(struct dsi_display *display)
 		DSI_DEBUG("cont splash enabled, display enable not required\n");
 		dsi_display_panel_id_notification(display);
 
-		rc = mi_dsi_panel_read_gamma_param(display->panel);
-		if (rc) {
-			DSI_ERR("[%s] failed to read gamma para, rc=%d\n",
-				display->name, rc);
-		} else {
-			rc = mi_dsi_panel_update_gamma_param(display->panel);
-			if (rc) {
-				DSI_ERR("[%s] failed to update gamma para, rc=%d\n",
-					display->name, rc);
-			}
-		}
-
 		if (mi_get_disp_id(display) == MI_DISP_PRIMARY && display->panel->mi_cfg.panel_id == 0x4B3800420200) {
+			if (display->panel->mi_cfg.feature_val[DISP_FEATURE_BIC] == BIC_UPDAT_REG_RIGHT_NOW)
+				mi_dsi_set_bic_reg(display->panel);
 			mi_dsi_panel_lhbm_set(display->panel);
 		}
 
-		rc = mi_dsi_panel_read_flatmode_param(display->panel);
+		rc = mi_dsi_panel_read_and_update_flatmode_param(display->panel);
 		if (rc) {
 			DSI_ERR("[%s] failed to read flatmode param, rc=%d\n",
+				display->name, rc);
+		}
+
+		rc = mi_dsi_panel_read_and_update_dc_param(display->panel);
+		if (rc) {
+			DSI_ERR("[%s] failed to read DC param, rc=%d\n",
 				display->name, rc);
 		}
 

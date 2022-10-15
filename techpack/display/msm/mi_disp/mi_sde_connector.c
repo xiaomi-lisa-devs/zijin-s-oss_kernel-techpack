@@ -119,7 +119,7 @@ static int mi_sde_get_fod_hbm_target_brightness(struct dsi_display *display)
 					display->panel->mi_cfg.fod_low_brightness_lux_threshold)
 				target = LOCAL_HBM_TARGET_BRIGHTNESS_WHITE_110NIT;
 		} else {
-			brightness_clone = display->panel->mi_cfg.brightness_clone;
+			mi_dsi_panel_get_brightness_clone(display->panel, &brightness_clone);
 			if (brightness_clone < display->panel->mi_cfg.fod_low_brightness_clone_threshold
 				&& (display->panel->mi_cfg.feature_val[DISP_FEATURE_SENSOR_LUX] <
 					display->panel->mi_cfg.fod_low_brightness_lux_threshold + 10)) {
@@ -205,8 +205,6 @@ int mi_sde_connector_panel_ctl(struct drm_connector *connector, uint32_t op_code
 
 	mi_cfg = &dsi_display->panel->mi_cfg;
 
-	mutex_lock(&dsi_display->panel->panel_lock);
-
 	switch (op_code) {
 	case MI_FOD_HBM_ON:
 		if (mi_cfg->local_hbm_enabled) {
@@ -216,21 +214,18 @@ int mi_sde_connector_panel_ctl(struct drm_connector *connector, uint32_t op_code
 				mi_cfg->local_hbm_target = LOCAL_HBM_TARGET_BRIGHTNESS_GREEN_500NIT;
 				break;
 			}
+
 			mi_cfg->local_hbm_target = mi_sde_get_fod_hbm_target_brightness(dsi_display);
 			if (mi_cfg->feature_val[DISP_FEATURE_FP_STATUS] == ENROLL_START)
 				mi_cfg->local_hbm_target = LOCAL_HBM_TARGET_BRIGHTNESS_WHITE_1000NIT;
 
 			if (mi_cfg->local_hbm_target == LOCAL_HBM_TARGET_BRIGHTNESS_WHITE_1000NIT) {
-				if (is_aod_and_panel_initialized(dsi_display->panel) && (!mi_cfg->fod_anim_layer_enabled ||
-				mi_cfg->panel_state == PANEL_STATE_DOZE_HIGH ||
-				mi_cfg->panel_state == PANEL_STATE_DOZE_LOW))
+				if (is_aod_and_panel_initialized(dsi_display->panel) && !mi_cfg->fod_anim_layer_enabled)
 					ctl.feature_val = LOCAL_HBM_HLPM_WHITE_1000NIT;
 				else
 					ctl.feature_val = LOCAL_HBM_NORMAL_WHITE_1000NIT;
 			} else if (mi_cfg->local_hbm_target == LOCAL_HBM_TARGET_BRIGHTNESS_WHITE_110NIT) {
-				if (is_aod_and_panel_initialized(dsi_display->panel) && (!mi_cfg->fod_anim_layer_enabled ||
-				mi_cfg->panel_state == PANEL_STATE_DOZE_HIGH ||
-				mi_cfg->panel_state == PANEL_STATE_DOZE_LOW))
+				if (is_aod_and_panel_initialized(dsi_display->panel) && !mi_cfg->fod_anim_layer_enabled)
 					ctl.feature_val = LOCAL_HBM_HLPM_WHITE_110NIT;
 				else
 					ctl.feature_val = LOCAL_HBM_NORMAL_WHITE_110NIT;
@@ -274,9 +269,6 @@ int mi_sde_connector_panel_ctl(struct drm_connector *connector, uint32_t op_code
 	default:
 		break;
 	}
-
-	mutex_unlock(&dsi_display->panel->panel_lock);
-
 	SDE_ATRACE_BEGIN("mi_sde_connector_panel_ctl");
 	ret = mi_dsi_display_set_disp_param(c_conn->display, &ctl);
 	SDE_ATRACE_END("mi_sde_connector_panel_ctl");

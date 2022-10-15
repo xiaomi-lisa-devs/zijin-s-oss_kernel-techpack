@@ -62,6 +62,7 @@ hw_item *hw_item_get_child(hw_item *root, const char *name)
 void hw_item_add_child(hw_item *root, const char *name, const char *value)
 {
 	hw_item *child, *it;
+	pr_info("hw_item_add_child: %s:%s\n", name, value);
 
 	it = kmalloc(sizeof(hw_item), GFP_KERNEL);
 	if (!it) {
@@ -129,6 +130,7 @@ static char *hw_item_print(hw_item *item, int ident, int *offset)
 	int size = *offset;
 
 	if (!print_buf) {
+		pr_err("hw_item_print: print_buf kmalloc failed\n");
 		return NULL;
 	}
 
@@ -252,22 +254,26 @@ int update_hw_monitor_info(char *component_name, char *mon_key, char *mon_value)
 	hw_item *component;
 	hw_item *child;
 
-	if (!info_manager || !info_manager->hw_monitor) {
+	if (!info_manager->hw_monitor) {
+		pr_err("hwconfig_manager is still not ready.\n");
 		return -EINVAL;
 	}
 
 	component = hw_item_get_child(info_manager->hw_monitor,
 					component_name);
 	if (!component) {
+		pr_err("No component %s\n", component_name);
 		return -EINVAL;
 	}
 
 	child = hw_item_get_child(component, mon_key);
 	if (!child) {
+		pr_err("Not find %s in %s\n", mon_key, component_name);
 		return -EINVAL;
 	}
 
 	hw_item_update_child(child, mon_key, mon_value);
+	pr_debug("%s: %s\n", __func__, hw_item_dump());
 
 	return 0;
 }
@@ -277,21 +283,25 @@ int add_hw_monitor_info(char *component_name, char *mon_key, char *mon_value)
 {
 	hw_item *component;
 
-	if (!info_manager || !info_manager->hw_monitor) {
+	if (!info_manager->hw_monitor) {
+		pr_err("hwconfig_manager is still not ready.\n");
 		return -EINVAL;
 	}
 
 	component = hw_item_get_child(info_manager->hw_monitor,
 					component_name);
 	if (!component) {
+		pr_err("can NOT find %s\n", component_name);
 		return -EINVAL;
 	}
 
 	if (hw_item_get_child(component, mon_key)) {
+		pr_err("%s is added in %s already\n", mon_key, component_name);
 		return -EINVAL;
 	}
 
 	hw_item_add_child(component, mon_key, mon_value);
+	pr_debug("%s: %s\n", __func__, hw_item_dump());
 
 	return 0;
 }
@@ -301,18 +311,22 @@ int register_hw_monitor_info(char *component_name)
 {
 	hw_item *component;
 
-	if (!info_manager || !info_manager->hw_monitor) {
+	if (!info_manager->hw_monitor) {
+		pr_err("hwconfig_manager is still not ready.\n");
 		return -EINVAL;
 	}
 
 	component = hw_item_get_child(info_manager->hw_monitor,
 					component_name);
 	if (component) {
+		pr_err("%s is registered already\n", component_name);
 		return -EINVAL;
 	}
 
 	hw_item_add_child(info_manager->hw_monitor,
 			      component_name, NULL);
+
+	pr_debug("%s: %s\n", __func__, hw_item_dump());
 
 	return 0;
 }
@@ -322,7 +336,8 @@ int unregister_hw_monitor_info(char *component_name)
 {
 	hw_item *component;
 
-	if (!info_manager || !info_manager->hw_monitor) {
+	if (!info_manager->hw_monitor) {
+		pr_err("hwconfig_manager is still not ready.\n");
 		return -EINVAL;
 	}
 
@@ -342,6 +357,8 @@ static ssize_t hw_info_store(struct kobject *kobj,
 {
 	memcpy(crypto_key, buf, sizeof(crypto_key));
 
+	pr_debug("%s crypto_key=%s\n", __func__, crypto_key);
+
 	return count;
 }
 
@@ -356,6 +373,7 @@ static int hw_info_decrypt_test(char *buf, size_t len)
 	info_manager->tfm = crypto_alloc_cipher("aes",
 			CRYPTO_ALG_TYPE_BLKCIPHER, CRYPTO_ALG_ASYNC);
 	if (IS_ERR(info_manager->tfm)) {
+		pr_err("Failed to load transform for aes mode!\n");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -363,6 +381,7 @@ static int hw_info_decrypt_test(char *buf, size_t len)
 	ret = crypto_cipher_setkey(info_manager->tfm, crypto_key,
 				   sizeof(crypto_key));
 	if (ret) {
+		pr_err("Failed to setkey\n");
 		ret = -EINVAL;
 		goto free_cipher;
 	}
@@ -382,6 +401,8 @@ static int hw_info_decrypt_test(char *buf, size_t len)
 	for (i = 0; i < len; i += blocksize)
 		crypto_cipher_decrypt_one(info_manager->tfm,
 					  &dest[i], &buf[i]);
+
+	pr_debug("%s: %s\n", __func__, dest);
 
 	kfree(dest);
 free_cipher:
@@ -429,6 +450,7 @@ static ssize_t hw_info_show(struct kobject *kobj,
 	int blocks = 0;
 
 	if (!strncmp(crypto_key, INIT_KEY, sizeof(crypto_key))) {
+		pr_err("crypto_key == INIT_KEY\n");
 		return 0;
 	}
 
@@ -436,12 +458,15 @@ static ssize_t hw_info_show(struct kobject *kobj,
 	info_manager->tfm = crypto_alloc_cipher("aes",
 			CRYPTO_ALG_TYPE_BLKCIPHER, CRYPTO_ALG_ASYNC);
 	if (IS_ERR(info_manager->tfm)) {
+		pr_err("Failed to load transform for aes mode!\n");
 		return 0;
 	}
 
+	pr_debug("%s crypto_key=%s\n", __func__, crypto_key);
 	ret = crypto_cipher_setkey(info_manager->tfm, crypto_key,
 				   sizeof(crypto_key));
 	if (ret) {
+		pr_err("Failed to setkey\n");
 		crypto_free_cipher(info_manager->tfm);
 		return 0;
 	}
@@ -573,23 +598,27 @@ int hwconf_init(void)
 
 	print_buf = kmalloc(PAGE_SIZE, GFP_KERNEL);
 	if (!print_buf) {
+		pr_err("hwconf_init: print_buf kmalloc failed\n");
 		goto print_buf_fail;
 	}
 	memset(print_buf, 0, PAGE_SIZE);
 
 	info_manager->hw_monitor = kmalloc(sizeof(hw_item), GFP_KERNEL);
-	if (!info_manager || !info_manager->hw_monitor) {
+	if (!info_manager->hw_monitor) {
+		pr_err("hwconf_init: hw_monitor kmalloc failed\n");
 		goto hw_monitor_fail;
 	}
 	memset(info_manager->hw_monitor, 0, sizeof(hw_item));
 
 	info_manager->hwconf_kobj = kobject_create_and_add("hwconf", NULL);
-	if (!info_manager || !info_manager->hwconf_kobj) {
+	if (!info_manager->hwconf_kobj) {
+		pr_err("hwconf_init: subsystem_register failed\n");
 		goto fail;
 	}
 
 	ret = sysfs_create_group(info_manager->hwconf_kobj, &attr_group);
 	if (ret) {
+		pr_err("hwconf_init: subsystem_register failed\n");
 		goto sys_fail;
 	}
 

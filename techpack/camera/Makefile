@@ -67,6 +67,11 @@ endif
 
 endif
 
+#add camera macro
+ifeq ($(TARGET_PRODUCT), $(filter $(TARGET_PRODUCT), zijin ))
+    KBUILD_CPPFLAGS += -DZIJIN_CAM
+endif
+
 ifneq (,$(filter $(CONFIG_SPECTRA_CAMERA), y m))
 # Use USERINCLUDE when you must reference the UAPI directories only.
 USERINCLUDE     += \

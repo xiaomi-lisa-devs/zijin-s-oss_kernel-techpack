@@ -22,7 +22,7 @@ module_param(debug_type, uint, 0644);
 
 struct camera_debug_settings cam_debug;
 
-/* xiaomi add hw trigger - begin */
+/* add hw trigger - begin */
 /* cmd 0~3 gpio-pin,gpio-value,debug which Module, gpio flag */
 static int cam_hw_trigger_cnt  = 4;
 static uint cam_hw_trigger_override[4] = {0,0,0,0};
@@ -62,7 +62,7 @@ int cam_debug_hw_trigger(unsigned int module_id)
 	}
 	return rc;
 }
-/* xiaomi add hw trigger - end */
+/* add hw trigger - end */
 
 const struct camera_debug_settings *cam_debug_get_settings()
 {

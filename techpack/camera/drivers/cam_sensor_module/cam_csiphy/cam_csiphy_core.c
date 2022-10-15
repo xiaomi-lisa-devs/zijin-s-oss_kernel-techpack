@@ -53,7 +53,6 @@ struct g_csiphy_data {
 };
 
 static struct g_csiphy_data g_phy_data[MAX_CSIPHY] = {{0, 0}};
-static int active_csiphy_hw_cnt;
 int32_t cam_csiphy_get_instance_offset(
 	struct csiphy_device *csiphy_dev,
 	int32_t dev_handle)
@@ -122,59 +121,6 @@ void cam_csiphy_reset(struct csiphy_device *csiphy_dev)
 			csiphy_dev->ctrl_reg->csiphy_reset_reg[i].delay,
 			csiphy_dev->ctrl_reg->csiphy_reset_reg[i].delay
 			+ 5);
-	}
-}
-
-static void cam_csiphy_prgm_cmn_data(
-	struct csiphy_device *csiphy_dev,
-	bool reset)
-{
-	int csiphy_idx = 0;
-	uint32_t size = 0;
-	int i = 0;
-	void __iomem *csiphybase;
-	bool is_3phase = false;
-	struct csiphy_reg_t *csiphy_common_reg = NULL;
-
-	size = csiphy_dev->ctrl_reg->csiphy_reg.csiphy_common_array_size;
-
-	if (active_csiphy_hw_cnt < 0 || active_csiphy_hw_cnt >= MAX_CSIPHY) {
-		CAM_WARN(CAM_CSIPHY,
-			"MisMatched in active phy hw: %d and Max supported: %d",
-			active_csiphy_hw_cnt, MAX_CSIPHY);
-		return;
-	}
-
-	if (active_csiphy_hw_cnt == 0) {
-		CAM_DBG(CAM_CSIPHY, "CSIPHYs HW state needs to be %s",
-			reset ? "reset" : "set");
-	} else {
-		CAM_DBG(CAM_CSIPHY, "Active CSIPHY hws are %d",
-			active_csiphy_hw_cnt);
-		return;
-	}
-
-	for (csiphy_idx = 0; csiphy_idx < MAX_CSIPHY; csiphy_idx++) {
-		csiphybase = g_phy_data[csiphy_idx].base_address;
-		is_3phase = g_phy_data[csiphy_idx].is_3phase;
-
-		for (i = 0; i < size; i++) {
-			csiphy_common_reg =
-				&csiphy_dev->ctrl_reg->csiphy_common_reg[i];
-			switch (csiphy_common_reg->csiphy_param_type) {
-			case CSIPHY_DEFAULT_PARAMS:
-				cam_io_w_mb(reset ? 0x00 :
-					csiphy_common_reg->reg_data,
-					csiphybase +
-					csiphy_common_reg->reg_addr);
-				break;
-			default:
-				break;
-			}
-			if (csiphy_common_reg->delay > 0)
-				usleep_range(csiphy_common_reg->delay,
-					csiphy_common_reg->delay + 5);
-		}
 	}
 }
 
@@ -919,7 +865,7 @@ int32_t cam_csiphy_config_dev(struct csiphy_device *csiphy_dev,
 		}
 
 		//csiphy_3phase only
-		if (get_hw_version_platform() == HARDWARE_PROJECT_K8) {
+		if ((get_hw_version_platform() == HARDWARE_PROJECT_K3S)) {
 			if ((csiphy_dev->csiphy_info[index].data_rate/1000000) > csiphy_hack_rate_mb)
 			{
 				for (i = 0; i < csiphy_override_cnt; i += 2)
@@ -973,8 +919,7 @@ void cam_csiphy_shutdown(struct csiphy_device *csiphy_dev)
 		cam_csiphy_reset(csiphy_dev);
 		cam_soc_util_disable_platform_resource(soc_info, true, true);
 
-		//deleted by xiaomi
-		//cam_cpas_stop(csiphy_dev->cpas_handle);
+		cam_cpas_stop(csiphy_dev->cpas_handle);
 		csiphy_dev->csiphy_state = CAM_CSIPHY_ACQUIRE;
 	}
 
@@ -990,8 +935,6 @@ void cam_csiphy_shutdown(struct csiphy_device *csiphy_dev)
 		}
 	}
 
-	// xiaomi: force stop cpas
-	cam_cpas_stop(csiphy_dev->cpas_handle);
 	csiphy_dev->ref_count = 0;
 	csiphy_dev->acquire_count = 0;
 	csiphy_dev->start_dev_count = 0;
@@ -1216,15 +1159,6 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 			goto release_mutex;
 		}
 
-		if (!csiphy_dev->acquire_count) {
-			g_phy_data[csiphy_dev->soc_info.index].is_3phase =
-					csiphy_acq_params.csiphy_3phase;
-			CAM_DBG(CAM_CSIPHY,
-					"g_csiphy data is updated for index: %d is_3phase: %u",
-					csiphy_dev->soc_info.index,
-					g_phy_data[csiphy_dev->soc_info.index].is_3phase);
-		}
-
 		csiphy_dev->acquire_count++;
 		CAM_DBG(CAM_CSIPHY, "ACQUIRE_CNT: %d",
 			csiphy_dev->acquire_count);
@@ -1301,15 +1235,6 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 			CAM_SECURE_MODE_NON_SECURE;
 
 		csiphy_dev->csiphy_info[offset].csiphy_cpas_cp_reg_mask = 0x0;
-
-		if (csiphy_dev->ctrl_reg->csiphy_reg
-			.prgm_cmn_reg_across_csiphy) {
-			mutex_lock(&active_csiphy_cnt_mutex);
-			active_csiphy_hw_cnt--;
-			mutex_unlock(&active_csiphy_cnt_mutex);
-
-			cam_csiphy_prgm_cmn_data(csiphy_dev, true);
-		}
 
 		rc = cam_csiphy_disable_hw(csiphy_dev);
 		if (rc < 0)
@@ -1553,15 +1478,6 @@ int32_t cam_csiphy_core_cfg(void *phy_dev,
 			goto release_mutex;
 		}
 		csiphy_dev->start_dev_count++;
-
-		if (csiphy_dev->ctrl_reg->csiphy_reg
-			.prgm_cmn_reg_across_csiphy) {
-			cam_csiphy_prgm_cmn_data(csiphy_dev, false);
-
-			mutex_lock(&active_csiphy_cnt_mutex);
-			active_csiphy_hw_cnt++;
-			mutex_unlock(&active_csiphy_cnt_mutex);
-		}
 
 		CAM_DBG(CAM_CSIPHY, "START DEV CNT: %d",
 			csiphy_dev->start_dev_count);

@@ -14,6 +14,7 @@
 #include "include/cam_csiphy_1_2_5_hwreg.h"
 #include "include/cam_csiphy_2_0_hwreg.h"
 #include "include/cam_csiphy_2_1_0_hwreg.h"
+#include <linux/hwid.h>
 
 /* Clock divide factor for CPHY spec v1.0 */
 #define CSIPHY_DIVISOR_16           16
@@ -400,8 +401,8 @@ int32_t cam_csiphy_parse_dt_info(struct platform_device *pdev,
 			csiphy_common_reg_1_2_3;
 		csiphy_dev->ctrl_reg->csiphy_reset_reg =
 			csiphy_reset_reg_1_2_3;
-		csiphy_dev->ctrl_reg->getclockvoting = get_clk_vote_default;
 		csiphy_dev->ctrl_reg->csiphy_reg = csiphy_v1_2_3;
+		csiphy_dev->ctrl_reg->getclockvoting = get_clk_vote_default;
 		csiphy_dev->is_csiphy_3phase_hw = CSI_3PHASE_HW;
 		csiphy_dev->is_divisor_32_comp = true;
 		csiphy_dev->hw_version = CSIPHY_VERSION_V123;

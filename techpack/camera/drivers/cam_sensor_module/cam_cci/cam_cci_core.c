@@ -491,7 +491,7 @@ static int32_t cam_cci_calc_cmd_len(struct cci_device *cci_dev,
 	uint8_t data_len = 0, addr_len = 0;
 	uint8_t pack_max_len;
 	struct cam_sensor_i2c_reg_setting *msg;
-	//struct cam_sensor_i2c_reg_array *cmd = i2c_cmd; //deleted by xiaomi
+	//struct cam_sensor_i2c_reg_array *cmd = i2c_cmd;
 	uint32_t size = cmd_size;
 
 	if (!cci_dev || !c_ctrl) {
@@ -514,7 +514,7 @@ static int32_t cam_cci_calc_cmd_len(struct cci_device *cci_dev,
 		len = data_len + addr_len;
 		pack_max_len = size < (cci_dev->payload_size-len) ?
 			size : (cci_dev->payload_size-len);
-		/* xiaomi add a flag to disable this optimization*/
+		/* add a flag to disable this optimization*/
 		if ((!c_ctrl->cci_info->disable_optmz) && (!disable_optmz))
 		{
 			CAM_DBG(CAM_CCI, "enable writing optimization for 0x%02X", c_ctrl->cci_info->sid<<1);

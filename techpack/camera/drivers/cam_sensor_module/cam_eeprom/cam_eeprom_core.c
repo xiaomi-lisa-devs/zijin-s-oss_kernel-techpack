@@ -1278,7 +1278,7 @@ static int32_t cam_eeprom_pkt_parse(struct cam_eeprom_ctrl_t *e_ctrl, void *arg)
 			}
 		}
 
-		/* xiaomi add eeprom read retry - begin */
+		/* add eeprom read retry - begin */
 		for (i = 0; i < MAX_RETRY_TIMES; i++) {
 			rc = cam_eeprom_power_up(e_ctrl,
 				&soc_private->power_info);
@@ -1307,7 +1307,7 @@ static int32_t cam_eeprom_pkt_parse(struct cam_eeprom_ctrl_t *e_ctrl, void *arg)
 				"read_eeprom_memory failed all the %d times",
 				 MAX_RETRY_TIMES);
 		}
-		/* xiaomi add eeprom read retry - end */
+		/* add eeprom read retry - end */
 
 		e_ctrl->cam_eeprom_state = CAM_EEPROM_ACQUIRE;
 		vfree(e_ctrl->cal_data.mapdata);

@@ -67,7 +67,7 @@ struct cam_cpas_debug_settings {
 	uint64_t camnoc_bw;
 };
 
-/* xiaomi add hw trigger - begin */
+/* add hw trigger - begin */
 /*
  *  cam_debug_hw_trigger()
  *
@@ -77,7 +77,7 @@ struct cam_cpas_debug_settings {
  * @module_id :  Respective Module ID which is calling this function
  */
 int cam_debug_hw_trigger(unsigned int module_id);
-/* xiaomi add hw trigger - end */
+/* add hw trigger - end */
 
 /**
  * struct camera_debug_settings - Sysfs debug settings for camera

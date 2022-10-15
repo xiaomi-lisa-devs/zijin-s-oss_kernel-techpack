@@ -4567,11 +4567,10 @@ static int __cam_isp_ctx_config_dev_in_top_state(
 		} else if ((ctx->state != CAM_CTX_FLUSHED) &&
 			(ctx->state >= CAM_CTX_READY) &&
 			ctx->ctx_crm_intf->add_req) {
+			memset(&add_req, 0, sizeof(add_req));
 			add_req.link_hdl = ctx->link_hdl;
 			add_req.dev_hdl  = ctx->dev_hdl;
 			add_req.req_id   = req->request_id;
-			add_req.skip_before_applying = 0;
-			add_req.trigger_eof = false;
 			rc = ctx->ctx_crm_intf->add_req(&add_req);
 			if (rc) {
 				CAM_ERR(CAM_ISP, "Add req failed: req id=%llu",
@@ -5712,6 +5711,12 @@ static int __cam_isp_ctx_handle_irq_in_activated(void *context,
 	return rc;
 }
 
+static int __cam_isp_shutdown_dev(
+	struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
+{
+	return cam_isp_subdev_close_internal(sd, fh);
+}
+
 /* top state machine */
 static struct cam_ctx_ops
 	cam_isp_ctx_top_state_machine[CAM_CTX_STATE_MAX] = {
@@ -5725,6 +5730,7 @@ static struct cam_ctx_ops
 	{
 		.ioctl_ops = {
 			.acquire_dev = __cam_isp_ctx_acquire_dev_in_available,
+			.shutdown_dev = __cam_isp_shutdown_dev,
 		},
 		.crm_ops = {},
 		.irq_ops = NULL,
@@ -5736,6 +5742,7 @@ static struct cam_ctx_ops
 			.release_dev = __cam_isp_ctx_release_dev_in_top_state,
 			.config_dev = __cam_isp_ctx_config_dev_in_acquired,
 			.release_hw = __cam_isp_ctx_release_hw_in_top_state,
+			.shutdown_dev = __cam_isp_shutdown_dev,
 		},
 		.crm_ops = {
 			.link = __cam_isp_ctx_link_in_acquired,
@@ -5755,6 +5762,7 @@ static struct cam_ctx_ops
 			.release_dev = __cam_isp_ctx_release_dev_in_top_state,
 			.config_dev = __cam_isp_ctx_config_dev_in_top_state,
 			.release_hw = __cam_isp_ctx_release_hw_in_top_state,
+			.shutdown_dev = __cam_isp_shutdown_dev,
 		},
 		.crm_ops = {
 			.unlink = __cam_isp_ctx_unlink_in_ready,
@@ -5772,6 +5780,7 @@ static struct cam_ctx_ops
 			.release_dev = __cam_isp_ctx_release_dev_in_activated,
 			.config_dev = __cam_isp_ctx_config_dev_in_flushed,
 			.release_hw = __cam_isp_ctx_release_hw_in_activated,
+			.shutdown_dev = __cam_isp_shutdown_dev,
 		},
 		.crm_ops = {
 			.unlink = __cam_isp_ctx_unlink_in_ready,
@@ -5788,6 +5797,7 @@ static struct cam_ctx_ops
 			.release_dev = __cam_isp_ctx_release_dev_in_activated,
 			.config_dev = __cam_isp_ctx_config_dev_in_top_state,
 			.release_hw = __cam_isp_ctx_release_hw_in_activated,
+			.shutdown_dev = __cam_isp_shutdown_dev,
 		},
 		.crm_ops = {
 			.unlink = __cam_isp_ctx_unlink_in_activated,

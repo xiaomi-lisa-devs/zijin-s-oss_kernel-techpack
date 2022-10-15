@@ -150,10 +150,8 @@ struct cam_cmd_ois_info {
 	__u8                  is_ois_calib;
 	char                  ois_name[MAX_OIS_NAME_SIZE];
 	struct cam_ois_opcode opcode;
-	//xiaomi add begin
 	uint8_t               is_ois_pre_init;
 	uint8_t               is_ois_post_init;
-	//xiaomi add end
 } __attribute__((packed));
 
 /**
@@ -466,7 +464,7 @@ struct cam_flash_set_on_off {
 	__u16    reserved;
 	__u32    led_current_ma[CAM_FLASH_MAX_LED_TRIGGERS];
 	__u64    time_on_duration_ns;
-	__u8     is_trigger_eof; // xiaomi add
+	__u8     is_trigger_eof;
 } __attribute__((packed));
 
 /**

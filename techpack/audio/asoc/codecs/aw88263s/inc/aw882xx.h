@@ -2,7 +2,7 @@
 #define _AW882XX_H_
 #include <linux/version.h>
 #include <linux/kernel.h>
-#include "aw_device.h"
+#include "aw882xx_device.h"
 
 /*
  * i2c transaction on Linux limited to 64k
@@ -15,10 +15,12 @@
 #define AW882XX_LOAD_FW_DELAY_TIME	(0)
 #define AW_START_RETRIES	(5)
 
+#define AW_PID_2055_VERSION_DIFF_REG	(0x23)
 
 #define AW_I2C_RETRIES			5	/* 5 times */
 #define AW_I2C_RETRY_DELAY		5	/* 5 ms */
 
+#define ACF_BIN_NAME	"aw882xx_acf.bin"
 
 #define AW882XX_RATES SNDRV_PCM_RATE_8000_48000
 #define AW882XX_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | \
@@ -35,8 +37,12 @@ enum aw882xx_chipid {
 	PID_2013_ID = 0x2013,
 	PID_2032_ID = 0x2032,
 	PID_2055_ID = 0x2055,
+	PID_2055A_ID = 0x2055A,
+	PID_2071_ID = 0x2071,
+	PID_2113_ID = 0x2113,
 };
 
+#define AW882XX_SOFT_RESET_REG		(0x00)
 #define AW882XX_SOFT_RESET_VALUE	(0x55aa)
 
 enum aw882xx_int_type {
@@ -51,11 +57,12 @@ enum aw882xx_int_type {
 #define AW_KERNEL_VER_OVER_4_19_1
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 3, 0)
-#define AW_KERNEL_VER_OVER_4_3_0
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0)
-#define AW_KERNEL_VER_OVER_4_2_0
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+#define AW_KERNEL_VER_OVER_5_4_0
+MODULE_IMPORT_NS(VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver);
 #endif
+
 
 #ifdef AW_KERNEL_VER_OVER_4_19_1
 typedef struct snd_soc_component aw_snd_soc_codec_t;
@@ -87,6 +94,16 @@ enum {
 #define AWRW_DATA_BYTES (2)
 #define AWRW_HDR_LEN (24)
 
+
+enum {
+	KCTL_TYPE_PROFILE = 0,
+	KCTL_TYPE_SWITCH,
+	KCTL_TYPE_MONITOR,
+	KCTL_TYPE_VOLUME,
+	AW_KCTL_NUM,
+
+};
+
 enum {
 	AWRW_FLAG_WRITE = 0,
 	AWRW_FLAG_READ,
@@ -95,6 +112,21 @@ enum {
 enum {
 	AW_BSTCFG_DISABLE = 0,
 	AW_BSTCFG_ENABLE,
+};
+
+enum {
+	AW_FRCSET_DISABLE = 0,
+	AW_FRCSET_ENABLE,
+};
+
+enum {
+	AW_BOP_DISABLE = 0,
+	AW_BOP_ENABLE,
+};
+
+enum {
+	AW_RENAME_DISABLE = 0,
+	AW_RENAME_ENABLE,
 };
 
 enum {
@@ -122,15 +154,14 @@ struct aw882xx {
 	int pstream;
 	int cstream;
 
-	unsigned char index;
 	unsigned char phase_sync;	/* phase sync */
 	unsigned char dc_flag;
 	unsigned char dbg_en_prof;	/* debug enable/disable profile function */
 	unsigned char allow_pw;		/* allow power */
+	uint32_t rename_flag;
+
 	int reset_gpio;
 	int irq_gpio;
-	int spk_sw_gpio;
-	unsigned int chip_id;
 	unsigned char fw_status;
 	unsigned char fw_retry_cnt;
 	unsigned char rw_reg_addr;	/* rw attr node store read addr */
@@ -161,7 +192,7 @@ int aw882xx_i2c_read(struct aw882xx *aw882xx,
 	unsigned char reg_addr, unsigned int *reg_data);
 int aw882xx_i2c_write_bits(struct aw882xx *aw882xx,
 	unsigned char reg_addr, unsigned int mask, unsigned int reg_data);
-int aw882xx_init(struct aw882xx *aw882xx, int index);
+int aw882xx_init(struct aw882xx *aw882xx);
 int aw882xx_hw_reset(struct aw882xx *aw882xx);
 
 

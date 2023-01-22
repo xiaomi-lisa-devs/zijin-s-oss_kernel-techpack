@@ -2,7 +2,7 @@
 
 HOME_DIR=$(pwd)
 
-for i in odin-r-oss lisa-r-oss vili-r-oss taoyao-s-oss zijin-s-oss redwood-s-oss
+for i in redwood-s-oss
 do
     mkdir -p micode/$i
     cd micode/$i

@@ -21,7 +21,10 @@
 #include "msm-dai-q6-v2.h"
 #include <asoc/core.h>
 #ifdef TFA_NON_DSP_SOLUTION
+#if defined(CONFIG_TARGET_PRODUCT_TAOYAO)
 #include "codecs/tfa9874/inc/tfa_platform_interface_definition.h"
+
+#endif
 #endif
 
 #define MSM_DAI_PRI_AUXPCM_DT_DEV_ID 1
@@ -6123,6 +6126,7 @@ static int msm_dai_q6_mi2s_hw_params(struct snd_pcm_substream *substream,
 	struct msm_dai_q6_dai_data *dai_data = &mi2s_dai_config->mi2s_dai_data;
 	struct afe_param_id_i2s_cfg *i2s = &dai_data->port_config.i2s;
 #ifdef TFA_NON_DSP_SOLUTION
+#if defined(CONFIG_TARGET_PRODUCT_TAOYAO)
 	u16 port_id = 0;
 
 	if (msm_mi2s_get_port_id(dai->id, substream->stream,
@@ -6131,6 +6135,7 @@ static int msm_dai_q6_mi2s_hw_params(struct snd_pcm_substream *substream,
 				__func__, port_id);
 		return -EINVAL;
 	}
+#endif
 #endif
 	dai_data->channels = params_channels(params);
 	switch (dai_data->channels) {
@@ -6322,10 +6327,12 @@ static int msm_dai_q6_mi2s_hw_params(struct snd_pcm_substream *substream,
 	    test_bit(STATUS_PORT_STARTED,
 	    mi2s_dai_data->tx_dai.mi2s_dai_data.hwfree_status))) {
 #ifdef TFA_NON_DSP_SOLUTION
+#if defined(CONFIG_TARGET_PRODUCT_TAOYAO)
 		if (AFE_PORT_ID_TFADSP_RX == port_id ||
 		    AFE_PORT_ID_TFADSP_TX == port_id) {
 			dev_dbg(dai->dev, "%s, port_id = 0x%x\n", __func__, port_id);
 		} else
+#endif
 #endif
 		if ((mi2s_dai_data->tx_dai.mi2s_dai_data.rate !=
 		    mi2s_dai_data->rx_dai.mi2s_dai_data.rate) ||

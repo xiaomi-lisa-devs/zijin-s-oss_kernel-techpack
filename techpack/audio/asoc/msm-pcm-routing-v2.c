@@ -51,10 +51,22 @@
 #define DRV_NAME "msm-pcm-routing-v2"
 
 #ifdef CONFIG_SND_SOC_TFA9874
+#if defined(CONFIG_TARGET_PRODUCT_TAOYAO)
+#include "codecs/tfa9874/inc/tfa_platform_interface_definition.h"
+#else
 #include "codecs/tfa98xx/inc/tfa_platform_interface_definition.h"
+#endif
 #endif
 
 #if defined(CONFIG_SND_SOC_AW88263S_TDM)
+#define PLATFORM_TDM_RX_VI_FB_RX_MUX_TEXT		"PRI_TDM_RX_0"
+#define PLATFORM_TDM_RX_VI_FB_TX_MUX_TEXT		"PRI_TDM_TX_0"
+#define PLATFORM_TDM_RX_VI_FB_MUX_NAME			"PRI_TDM_RX_VI_FB_MUX"
+#define PLATFORM_TDM_RX_VI_FB_TX_VALUE			MSM_BACKEND_DAI_PRI_TDM_TX_0
+#define PLATFORM_TDM_RX_VI_FB_MUX_ENUM			MSM_BACKEND_DAI_PRI_TDM_RX_0
+#endif
+
+#if defined(CONFIG_SND_SOC_AW88263S_M20_TDM)
 #define PLATFORM_TDM_RX_VI_FB_RX_MUX_TEXT		"PRI_TDM_RX_0"
 #define PLATFORM_TDM_RX_VI_FB_TX_MUX_TEXT		"PRI_TDM_TX_0"
 #define PLATFORM_TDM_RX_VI_FB_MUX_NAME			"PRI_TDM_RX_VI_FB_MUX"
@@ -2417,8 +2429,10 @@ int msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode,
 				bits_per_sample = msm_routing_get_bit_width(
 							SNDRV_PCM_FORMAT_S32_LE);
 
-			if ((acdb_dev_id == 10) &&
-				(fe_dai_app_type_cfg[fedai_id][session_type][i].channel > 2)){
+			if (((i == MSM_BACKEND_DAI_SLIMBUS_7_RX) ||
+						(i == MSM_BACKEND_DAI_RX_CDC_DMA_RX_0) ||
+							(i == MSM_BACKEND_DAI_USB_RX)) &&
+				(fe_dai_app_type_cfg[fedai_id][session_type][i].channel != 0)){
 				channels = fe_dai_app_type_cfg[fedai_id][session_type][i].channel;
 				pr_debug("%s before adm_open change channel to %d!\n"
 					,__func__, channels);
@@ -2737,6 +2751,14 @@ static void msm_pcm_routing_process_audio(u16 reg, u16 val, int set)
 				352800) && be_bit_width == 32)
 				bits_per_sample = msm_routing_get_bit_width(
 							SNDRV_PCM_FORMAT_S32_LE);
+			if(((reg == MSM_BACKEND_DAI_SLIMBUS_7_RX) ||
+						(reg == MSM_BACKEND_DAI_RX_CDC_DMA_RX_0) ||
+							(reg == MSM_BACKEND_DAI_USB_RX)) &&
+				(fe_dai_app_type_cfg[val][session_type][reg].channel != 0)){
+				channels = fe_dai_app_type_cfg[val][session_type][reg].channel;
+				pr_debug("%s before adm_open change channel to %d!\n"
+					,__func__, channels);
+			}
 			copp_idx = adm_open(port_id, path_type,
 					    sample_rate, channels, topology,
 					    fdai->perf_mode, bits_per_sample,
@@ -32662,6 +32684,12 @@ static const char * const tdm_rx_vi_fb_tx_mux_text[] = {
 };
 #endif
 
+#if defined(CONFIG_SND_SOC_AW88263S_M20_TDM)
+static const char * const tdm_rx_vi_fb_tx_mux_text[] = {
+	"ZERO", PLATFORM_TDM_RX_VI_FB_TX_MUX_TEXT
+};
+#endif
+
 static const char * const int4_mi2s_rx_vi_fb_tx_mono_mux_text[] = {
 	"ZERO", "INT5_MI2S_TX"
 };
@@ -32696,6 +32724,12 @@ static const int mi2s_rx_vi_fb_tx_value[] = {
 };
 
 #if defined(CONFIG_SND_SOC_TFA9874_DAVI_TDM) || defined(CONFIG_SND_SOC_AW88263S_TDM)
+static const int tdm_rx_vi_fb_tx_value[] = {
+	MSM_BACKEND_DAI_MAX, PLATFORM_TDM_RX_VI_FB_TX_VALUE
+};
+#endif
+
+#if defined(CONFIG_SND_SOC_AW88263S_M20_TDM)
 static const int tdm_rx_vi_fb_tx_value[] = {
 	MSM_BACKEND_DAI_MAX, PLATFORM_TDM_RX_VI_FB_TX_VALUE
 };
@@ -32745,6 +32779,13 @@ static const struct soc_enum tdm_rx_vi_fb_mux_enum =
 	tdm_rx_vi_fb_tx_mux_text, tdm_rx_vi_fb_tx_value);
 #endif
 
+#if defined(CONFIG_SND_SOC_AW88263S_M20_TDM)
+static const struct soc_enum tdm_rx_vi_fb_mux_enum =
+	SOC_VALUE_ENUM_DOUBLE(0, PLATFORM_TDM_RX_VI_FB_MUX_ENUM, 0, 0,
+	ARRAY_SIZE(tdm_rx_vi_fb_tx_mux_text),
+	tdm_rx_vi_fb_tx_mux_text, tdm_rx_vi_fb_tx_value);
+#endif
+
 static const struct soc_enum int4_mi2s_rx_vi_fb_mono_ch_mux_enum =
 	SOC_VALUE_ENUM_DOUBLE(0, MSM_BACKEND_DAI_INT4_MI2S_RX, 0, 0,
 	ARRAY_SIZE(int4_mi2s_rx_vi_fb_tx_mono_mux_text),
@@ -32787,6 +32828,13 @@ static const struct snd_kcontrol_new mi2s_rx_vi_fb_mux =
 	spkr_prot_put_vi_lch_port);
 
 #if defined(CONFIG_SND_SOC_TFA9874_DAVI_TDM) || defined(CONFIG_SND_SOC_AW88263S_TDM)
+static const struct snd_kcontrol_new tdm_rx_vi_fb_mux =
+	SOC_DAPM_ENUM_EXT(PLATFORM_TDM_RX_VI_FB_MUX_NAME,
+	tdm_rx_vi_fb_mux_enum, spkr_prot_get_vi_lch_port,
+	spkr_prot_put_vi_lch_port);
+#endif
+
+#if defined(CONFIG_SND_SOC_AW88263S_M20_TDM)
 static const struct snd_kcontrol_new tdm_rx_vi_fb_mux =
 	SOC_DAPM_ENUM_EXT(PLATFORM_TDM_RX_VI_FB_MUX_NAME,
 	tdm_rx_vi_fb_mux_enum, spkr_prot_get_vi_lch_port,
@@ -32884,7 +32932,7 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets[] = {
 		"TX3_CDC_DMA_HOSTLESS Capture", 0, 0, 0, 0),
 	SND_SOC_DAPM_AIF_OUT("TX4_CDC_DMA_UL_US", "ULTRAOUND_HOSTLESS Capture",
 		0, 0, 0, 0),
-#if defined(CONFIG_TARGET_PRODUCT_CETUS) || defined(CONFIG_TARGET_PRODUCT_ARGO)
+#if defined(CONFIG_TARGET_PRODUCT_CETUS)
 	SND_SOC_DAPM_AIF_IN("RX1_CDC_DMA_DL_US", "ULTRAOUND_HOSTLESS Playback",
 		0, 0, 0, 0),
 #elif defined(CONFIG_TARGET_PRODUCT_LISA) || defined(CONFIG_TARGET_PRODUCT_MONA) || defined(CONFIG_TARGET_PRODUCT_ZIJIN)
@@ -34928,6 +34976,12 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets_tdm[] = {
 	SND_SOC_DAPM_MUX(PLATFORM_TDM_RX_VI_FB_MUX_NAME, SND_SOC_NOPM, 0, 0,
 				&tdm_rx_vi_fb_mux),
 #endif
+
+#if defined(CONFIG_SND_SOC_AW88263S_M20_TDM)
+	SND_SOC_DAPM_MUX(PLATFORM_TDM_RX_VI_FB_MUX_NAME, SND_SOC_NOPM, 0, 0,
+				&tdm_rx_vi_fb_mux),
+#endif
+
 	SND_SOC_DAPM_MIXER("HSIF0_TDM_RX_0 Port Mixer", SND_SOC_NOPM, 0, 0,
 				hsif0_tdm_rx_0_port_mixer_controls,
 				ARRAY_SIZE(hsif0_tdm_rx_0_port_mixer_controls)),
@@ -40665,6 +40719,12 @@ static const struct snd_soc_dapm_route intercon_tdm[] = {
 #if defined(CONFIG_SND_SOC_TFA9874_DAVI_TDM) || defined(CONFIG_SND_SOC_AW88263S_TDM)
 	{PLATFORM_TDM_RX_VI_FB_RX_MUX_TEXT, NULL, PLATFORM_TDM_RX_VI_FB_MUX_NAME},
 #endif
+
+#if defined(CONFIG_SND_SOC_AW88263S_M20_TDM)
+	{PLATFORM_TDM_RX_VI_FB_MUX_NAME, PLATFORM_TDM_RX_VI_FB_TX_MUX_TEXT, PLATFORM_TDM_RX_VI_FB_TX_MUX_TEXT},
+	{PLATFORM_TDM_RX_VI_FB_RX_MUX_TEXT, NULL, PLATFORM_TDM_RX_VI_FB_MUX_NAME},
+#endif
+
 	{"HSIF0_TDM_TX_0", NULL, "BE_IN"},
 	{"HSIF0_TDM_TX_1", NULL, "BE_IN"},
 	{"HSIF0_TDM_TX_2", NULL, "BE_IN"},
@@ -41294,7 +41354,9 @@ static const struct snd_soc_dapm_route intercon_mi2s[] = {
 	{"PRI_MI2S_UL_HL", NULL, "PRI_MI2S_TX"},
 	{"SEC_MI2S_UL_HL", NULL, "SEC_MI2S_TX"},
 	{"SEC_MI2S_RX", NULL, "SEC_MI2S_DL_HL"},
+#if !defined(CONFIG_TARGET_PRODUCT_TAOYAO)
 	{"PRI_MI2S_RX", NULL, "PRI_MI2S_DL_HL"},
+#endif
 #if !defined(CONFIG_TARGET_PRODUCT_RENOIR)
 	{"TERT_MI2S_RX", NULL, "TERT_MI2S_DL_HL"},
 #endif
@@ -41701,8 +41763,10 @@ static int msm_pcm_routing_prepare(struct snd_pcm_substream *substream)
 				be_bit_width == 32)
 				bits_per_sample = msm_routing_get_bit_width(
 							SNDRV_PCM_FORMAT_S32_LE);
-			if((acdb_dev_id == 10) &&
-				(fe_dai_app_type_cfg[i][session_type][be_id].channel > 2)){
+			if(((be_id == MSM_BACKEND_DAI_SLIMBUS_7_RX) ||
+						(be_id == MSM_BACKEND_DAI_RX_CDC_DMA_RX_0) ||
+							(be_id == MSM_BACKEND_DAI_USB_RX)) &&
+				(fe_dai_app_type_cfg[i][session_type][be_id].channel != 0)){
 				channels = fe_dai_app_type_cfg[i][session_type][be_id].channel;
 				pr_debug("%s before adm_open change channel to %d!\n"
 					,__func__, channels);

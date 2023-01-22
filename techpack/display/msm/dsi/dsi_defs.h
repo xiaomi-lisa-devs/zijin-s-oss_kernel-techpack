@@ -298,6 +298,7 @@ enum dsi_cmd_set_type {
 	DSI_CMD_SET_MI_DOZE_LBM,
 	DSI_CMD_SET_MI_DOZE_HBM_NOLP,
 	DSI_CMD_SET_MI_DOZE_LBM_NOLP,
+	DSI_CMD_SET_MI_DOZE_NONE_NOLP,
 	DSI_CMD_SET_MI_FLAT_MODE_ON,
 	DSI_CMD_SET_MI_FLAT_MODE_OFF,
 	DSI_CMD_SET_MI_TIMING_SWITCH,
@@ -345,6 +346,9 @@ enum dsi_cmd_set_type {
 	DSI_CMD_SET_MI_TIMING_SWITCH_GIR,
 	DSI_CMD_SET_MI_AOD_TO_DC_ON,
 	DSI_CMD_SET_MI_SWITCH_PAGE4,
+	DSI_CMD_SET_MI_FPS_120_GAMMA,
+	DSI_CMD_SET_MI_FPS_90_GAMMA,
+	DSI_CMD_SET_MI_FPS_60_GAMMA,
 	/* xiaomi add end */
 	DSI_CMD_SET_MAX
 };
@@ -565,6 +569,7 @@ struct dsi_host_common_cfg {
 	u32 dma_sched_line;
 	u32 dma_sched_window;
 	u32 clk_strength;
+	u32 phy_voltage;
 };
 
 /**

@@ -27,6 +27,8 @@ enum bkl_dimming_state {
 	STATE_ALL
 };
 
+
+
 struct flatmode_cfg {
 	bool update_done;
 	int update_index;
@@ -35,7 +37,7 @@ struct flatmode_cfg {
 
 struct lhbm_cfg {
 	bool update_done;
-	u8 lhbm_rgb_param[14];
+	u8 lhbm_rgb_param[26];
 };
 
 struct vdc_cfg {
@@ -104,6 +106,15 @@ enum aod_brightness_level {
 	AOD_LBM_LEVEL,
 	AOD_HBM_LEVEL,
 	AOD_LEVEL_MAX
+};
+
+enum lhbm_target_brightness_state {
+	LOCAL_HBM_TARGET_BRIGHTNESS_OFF_FINGER_UP,
+	LOCAL_HBM_TARGET_BRIGHTNESS_OFF_AUTH_STOP,
+	LOCAL_HBM_TARGET_BRIGHTNESS_WHITE_1000NIT,
+	LOCAL_HBM_TARGET_BRIGHTNESS_WHITE_110NIT,
+	LOCAL_HBM_TARGET_BRIGHTNESS_GREEN_500NIT,
+	LOCAL_HBM_TARGET_BRIGHTNESS_MAX
 };
 
 struct mi_dsi_panel_cfg {
@@ -179,6 +190,8 @@ struct mi_dsi_panel_cfg {
 	int local_hbm_hlpm_on_87_index;
 	int local_hbm_normal_alpha_87_index;
 	int local_hbm_hlpm_alpha_87_index;
+	int local_hbm_dc_gain_index;
+	int local_hbm_normal_dc_gain_index;
 	int cup_dbi_reg_index;
 	bool update_vdc_param_enabled;
 	int dsi_on_e9_index;
@@ -200,6 +213,7 @@ struct mi_dsi_panel_cfg {
 	bool delay_before_fod_hbm_off;
 
 	u32 dimming_state;
+
 
 	bool aod_bl_51ctl;
 	bool dfps_bl_ctrl;
@@ -262,7 +276,7 @@ struct mi_dsi_panel_cfg {
 	u32 nolp_bl_index;
 
 	bool aod_brightness_work_flag;
-
+	bool lhbm_fod_touch_ctl_by_sf;
 };
 
 struct dsi_read_config {
@@ -310,7 +324,10 @@ bool mi_dsi_panel_is_need_tx_cmd(u32 feature_id);
 int mi_dsi_panel_set_disp_param(struct dsi_panel *panel,
 			struct disp_feature_ctl *ctl);
 
-ssize_t mi_dsi_panel_get_disp_param(struct dsi_panel *panel,
+int mi_dsi_panel_get_disp_param(struct dsi_panel *panel,
+			struct disp_feature_ctl *ctl);
+
+ssize_t mi_dsi_panel_show_disp_param(struct dsi_panel *panel,
 			char *buf, size_t size);
 
 int mi_dsi_panel_set_doze_brightness(struct dsi_panel *panel,
@@ -355,6 +372,9 @@ int mi_dsi_panel_set_brightness_clone(struct dsi_panel *panel,
 int mi_dsi_panel_get_brightness_clone(struct dsi_panel *panel,
 			u32 *brightness_clone);
 
+int mi_dsi_panel_get_max_brightness_clone(struct dsi_panel *panel,
+			u32 *max_brightness_clone);
+
 void mi_dsi_panel_demura_comp(struct dsi_panel *panel,
 			u32 bl_lvl);
 
@@ -394,4 +414,6 @@ int mi_dsi_panel_update_lhbm_param(struct dsi_panel * panel);
 int mi_dsi_panel_update_vdc_param(struct dsi_panel * panel);
 
 void mi_dsi_backlight_logging(struct dsi_panel *panel, u32 bl_lvl);
+
+int mi_disp_set_local_hbm(int disp_id, int local_hbm_value);
 #endif /* _MI_DSI_PANEL_H_ */

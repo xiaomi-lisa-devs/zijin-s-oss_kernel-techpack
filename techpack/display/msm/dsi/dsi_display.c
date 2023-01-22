@@ -25,7 +25,6 @@
 #include "mi_disp_feature.h"
 #include "mi_dsi_display.h"
 #include "mi_disp_print.h"
-#include "mi_dsi_panel_count.h"
 
 #define to_dsi_display(x) container_of(x, struct dsi_display, host)
 #define INT_BASE_10 10
@@ -1300,6 +1299,10 @@ int dsi_display_set_power(struct drm_connector *connector,
 	struct dsi_display *display = disp;
 	struct disp_event event;
 	struct mi_disp_notifier notify_data;
+	struct disp_display *dd_ptr;
+
+	struct disp_feature *df = mi_get_disp_feature();
+
 	int disp_id = 0;
 	int rc = 0;
 	bool update_bl = false;
@@ -1313,6 +1316,7 @@ int dsi_display_set_power(struct drm_connector *connector,
 
 	disp_id = mi_get_disp_id(display);
 
+	dd_ptr = &df->d_display[disp_id];
 	notify_data.data = &power_mode;
 	notify_data.disp_id = disp_id;
 
@@ -1353,6 +1357,8 @@ int dsi_display_set_power(struct drm_connector *connector,
 	DSI_DEBUG("Power mode transition from %d to %d %s",
 			display->panel->power_mode, power_mode,
 			rc ? "failed" : "successful");
+	if(display->panel->mi_cfg.panel_id == 0x4D323000360200)
+		wake_up_interruptible_all(&dd_ptr->pending_wq);
 	if (!rc) {
 		display->panel->power_mode = power_mode;
 
@@ -5471,7 +5477,22 @@ int dsi_display_splash_res_cleanup(struct  dsi_display *display)
 
 static int dsi_display_force_update_dsi_clk(struct dsi_display *display)
 {
-	int rc = 0;
+	int rc = 0, i;
+	struct dsi_display_ctrl *ctrl;
+
+	/*
+	 * The force update dsi clock, is the only clock update function that toggles the state of
+	 * DSI clocks without any ref count protection. With the addition of ASYNC command wait,
+	 * there is a need for adding a check for any queued waits before updating these clocks.
+	 */
+	display_for_each_ctrl(i, display) {
+		ctrl = &display->ctrl[i];
+		if (!ctrl->ctrl || !ctrl->ctrl->dma_wait_queued)
+			continue;
+		flush_workqueue(display->dma_cmd_workq);
+		cancel_work_sync(&ctrl->ctrl->dma_cmd_wait);
+		ctrl->ctrl->dma_wait_queued = false;
+	}
 
 	rc = dsi_display_link_clk_force_update_ctrl(display->dsi_clk_handle);
 
@@ -7453,8 +7474,6 @@ int dsi_display_set_mode(struct dsi_display *display,
 		notify_data.disp_id = mi_get_disp_id(display);
 		mi_disp_notifier_call_chain(MI_DISP_FPS_CHANGE_EVENT, &notify_data);
 		mi_disp_feature_sysfs_notify(event.disp_id, MI_SYSFS_DYNAMIC_FPS);
-		if (display->panel->mi_count.panel_active_count_enable)
-			mi_dsi_panel_fps_count_lock(display->panel, timing.refresh_rate, 1);
 	}
 
 	memcpy(display->panel->cur_mode, &adj_mode, sizeof(adj_mode));
@@ -8299,7 +8318,8 @@ int dsi_display_enable(struct dsi_display *display)
 		}
 
 		display->panel->panel_initialized = true;
-		DSI_DEBUG("cont splash enabled, display enable not required\n");
+		display->panel->power_mode = SDE_MODE_DPMS_ON;
+		DSI_INFO("cont splash enabled, display enable not required\n");
 		dsi_display_panel_id_notification(display);
 
 		if (mi_get_disp_id(display) == MI_DISP_PRIMARY && display->panel->mi_cfg.panel_id == 0x4B3800420200) {
@@ -8312,7 +8332,7 @@ int dsi_display_enable(struct dsi_display *display)
 				DSI_ERR("[%s] failed to update vdc_enabled param, rc=%d\n",
 					display->name, rc);
 			}
-		} else if (display->panel->mi_cfg.panel_id == 0x4C3900360200){
+		} else if ((display->panel->mi_cfg.panel_id == 0x4C3900360200) || (display->panel->mi_cfg.panel_id == 0x4D323000360200)){
 			DSI_ERR("[%s] Not need to update flatmode parameter\n",display->name);
 		} else{
 			rc = mi_dsi_panel_read_and_update_flatmode_param(display->panel);
@@ -8383,6 +8403,12 @@ int dsi_display_enable(struct dsi_display *display)
 				   display->name, rc);
 
 		goto error;
+	}
+	if (display->panel->mi_cfg.panel_id == 0x4D323000360200){
+		rc = dsi_panel_gamma_switch(display->panel);
+		if (rc) {
+		DSI_ERR("failed to swith gamma, rc=%d\n",rc);
+		}
 	}
 
 	if (display->config.panel_mode == DSI_OP_VIDEO_MODE) {

@@ -1120,7 +1120,10 @@ static void _sde_dump_array(struct sde_dbg_reg_base *blk_arr[],
 	start = ktime_get();
 	if (dump_dbgbus_sde) {
 		_sde_dbg_dump_sde_dbg_bus(&sde_dbg_base.dbgbus_sde);
-		_sde_dbg_dump_sde_dbg_bus(&sde_dbg_base.dbgbus_lutdma);
+		if (dbg_base->dbgbus_lutdma.entries) {
+			_sde_dbg_dump_sde_dbg_bus(&sde_dbg_base.dbgbus_lutdma);
+		} else
+			pr_info("hardware version not support lutdma_debugs\n");
 	}
 
 	if (dump_dbgbus_vbif_rt)

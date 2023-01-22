@@ -44,6 +44,8 @@
 
 #include "sde_vm.h"
 #include "mi_sde_encoder.h"
+#include "dsi_drm.h"
+#include "dsi_display.h"
 
 #define SDE_DEBUG_ENC(e, fmt, ...) SDE_DEBUG("enc%d " fmt,\
 		(e) ? (e)->base.base.id : -1, ##__VA_ARGS__)
@@ -142,8 +144,10 @@ void sde_encoder_uidle_enable(struct drm_encoder *drm_enc, bool enable)
 	for (i = 0; i < sde_enc->num_phys_encs; i++) {
 		struct sde_encoder_phys *phys = sde_enc->phys_encs[i];
 
-		if (phys && phys->hw_ctl && phys->hw_ctl->ops.uidle_enable) {
-			SDE_EVT32(DRMID(drm_enc), enable);
+		if (phys && phys->hw_ctl && phys->hw_ctl->ops.uidle_enable &&
+				phys->split_role != ENC_ROLE_SLAVE) {
+			if (enable)
+				SDE_EVT32(DRMID(drm_enc), enable);
 			phys->hw_ctl->ops.uidle_enable(phys->hw_ctl, enable);
 		}
 	}
@@ -1380,20 +1384,9 @@ static int _sde_encoder_update_rsc_client(
 	    (rsc_config->prefill_lines != mode_info->prefill_lines) ||
 	    (rsc_config->jitter_numer != mode_info->jitter_numer) ||
 	    (rsc_config->jitter_denom != mode_info->jitter_denom)) {
-
 		rsc_config->fps = mode_info->frame_rate;
 		rsc_config->vtotal = mode_info->vtotal;
-		/*
-		 * for video mode, prefill lines should not go beyond vertical
-		 * front porch for RSCC configuration. This will ensure bw
-		 * downvotes are not sent within the active region. Additional
-		 * -1 is to give one line time for rscc mode min_threshold.
-		 */
-		if (is_vid_mode && (mode_info->prefill_lines >= v_front_porch))
-			rsc_config->prefill_lines = v_front_porch - 1;
-		else
-			rsc_config->prefill_lines = mode_info->prefill_lines;
-
+		rsc_config->prefill_lines = mode_info->prefill_lines;
 		rsc_config->jitter_numer = mode_info->jitter_numer;
 		rsc_config->jitter_denom = mode_info->jitter_denom;
 		sde_enc->rsc_state_init = false;
@@ -4263,21 +4256,64 @@ static int _sde_encoder_reset_ctl_hw(struct drm_encoder *drm_enc)
 	return rc;
 }
 
+int sde_encoder_vid_wait_for_active(
+			struct drm_encoder *drm_enc)
+{
+	struct drm_display_mode mode;
+	struct sde_encoder_virt *sde_enc = NULL;
+	u32 ln_cnt, min_ln_cnt, active_mark_region;
+	u32 i, retry = 15;
+	if (!drm_enc) {
+		SDE_ERROR("invalid encoder\n");
+		return -EINVAL;
+	}
+	sde_enc = to_sde_encoder_virt(drm_enc);
+	for (i = 0; i < sde_enc->num_phys_encs; i++) {
+		struct sde_encoder_phys *phys = sde_enc->phys_encs[i];
+		if (!phys || (phys->ops.is_master && !phys->ops.is_master(phys)))
+			continue;
+		mode = phys->cached_mode;
+		min_ln_cnt = (mode.vtotal - mode.vsync_start) +
+			(mode.vsync_end - mode.vsync_start);
+		active_mark_region = mode.vdisplay + min_ln_cnt - mode.vdisplay / 4;
+		while (retry) {
+			ln_cnt = phys->ops.get_line_count(phys);
+			if ((ln_cnt > min_ln_cnt) && (ln_cnt < active_mark_region))
+				return 0;
+			udelay(2000);
+			retry--;
+		}
+	}
+	return -EINVAL;
+}
+
 void sde_encoder_kickoff(struct drm_encoder *drm_enc, bool is_error,
 		bool config_changed)
 {
 	struct sde_encoder_virt *sde_enc;
 	struct sde_encoder_phys *phys;
 	unsigned int i;
+	struct dsi_bridge *c_bridge = NULL;
+	struct dsi_display *dsi_display = NULL;
+	struct dsi_display_mode adj_mode;
 
 	if (!drm_enc) {
 		SDE_ERROR("invalid encoder\n");
 		return;
 	}
+
 	SDE_ATRACE_BEGIN("encoder_kickoff");
 	sde_enc = to_sde_encoder_virt(drm_enc);
 
 	SDE_DEBUG_ENC(sde_enc, "\n");
+
+	if (sde_enc->disp_info.intf_type == DRM_MODE_CONNECTOR_DSI && drm_enc->bridge) {
+		c_bridge = container_of(drm_enc->bridge, struct dsi_bridge, base);
+		if (c_bridge) {
+			dsi_display = c_bridge->display;
+			adj_mode = c_bridge->dsi_mode;
+		}
+	}
 
 	mi_sde_encoder_calc_fps(drm_enc);
 
@@ -4298,6 +4334,13 @@ void sde_encoder_kickoff(struct drm_encoder *drm_enc, bool is_error,
 		SDE_EVT32(DRMID(drm_enc), i, SDE_EVTLOG_FUNC_CASE1);
 	}
 
+	if (dsi_display && dsi_display->panel
+		&& sde_enc->disp_info.intf_type == DRM_MODE_CONNECTOR_DSI
+		&& dsi_display->panel->mi_cfg.panel_id == 0x4D323000360200
+		&& adj_mode.dsi_mode_flags & DSI_MODE_FLAG_VRR) {
+		sde_encoder_vid_wait_for_active(drm_enc);
+	}
+
 	/* All phys encs are ready to go, trigger the kickoff */
 	_sde_encoder_kickoff_phys(sde_enc, config_changed);
 
@@ -4306,6 +4349,13 @@ void sde_encoder_kickoff(struct drm_encoder *drm_enc, bool is_error,
 		phys = sde_enc->phys_encs[i];
 		if (phys && phys->ops.handle_post_kickoff)
 			phys->ops.handle_post_kickoff(phys);
+	}
+
+	if (dsi_display && dsi_display->panel
+		&& sde_enc->disp_info.intf_type == DRM_MODE_CONNECTOR_DSI
+		&& dsi_display->panel->mi_cfg.panel_id == 0x4D323000360200
+		&& adj_mode.dsi_mode_flags & DSI_MODE_FLAG_VRR) {
+		dsi_panel_gamma_switch(dsi_display->panel);
 	}
 
 	SDE_ATRACE_END("encoder_kickoff");

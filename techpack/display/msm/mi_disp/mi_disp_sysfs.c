@@ -93,13 +93,17 @@ static ssize_t disp_param_show(struct device *device,
 			   char *buf)
 {
 	struct disp_display *dd_ptr = to_disp_display(device);
+	int ret = 0;
 
 	if (dd_ptr->intf_type == MI_INTF_DSI) {
-		return mi_dsi_display_get_disp_param(dd_ptr->display, buf, PAGE_SIZE);
+		ret = mi_dsi_display_show_disp_param(dd_ptr->display, buf, PAGE_SIZE);
 	} else {
-		return snprintf(buf, PAGE_SIZE, "Unsupported display(%s intf)\n",
+		snprintf(buf, PAGE_SIZE, "Unsupported display(%s intf)\n",
 			get_disp_intf_type_name(dd_ptr->intf_type));
+		ret = -EINVAL;
 	}
+
+	return ret;
 }
 
 static ssize_t mipi_rw_store(struct device *device,
@@ -246,6 +250,31 @@ static ssize_t brightness_clone_store(struct device *device,
 	return ret ? ret : count;
 }
 
+static ssize_t max_brightness_clone_show(struct device *device,
+		struct device_attribute *attr, char *buf)
+{
+	struct disp_display *dd_ptr = to_disp_display(device);
+	int max_brightness_clone = 0;
+	int rc = 0;
+	int ret = 0;
+
+	if (dd_ptr->intf_type == MI_INTF_DSI) {
+		rc = mi_dsi_display_get_max_brightness_clone(dd_ptr->display, &max_brightness_clone);
+		if (rc) {
+			snprintf(buf, PAGE_SIZE, "%s\n", "null");
+			ret = -EINVAL;
+		} else {
+			ret = snprintf(buf, PAGE_SIZE, "%d\n", max_brightness_clone);
+		}
+	} else {
+		snprintf(buf, PAGE_SIZE, "Unsupported display(%s intf)\n",
+			get_disp_intf_type_name(dd_ptr->intf_type));
+		ret = -EINVAL;
+	}
+
+	return ret;
+}
+
 static ssize_t hw_vsync_info_show(struct device *device,
 		struct device_attribute *attr, char *buf)
 {
@@ -281,35 +310,6 @@ static ssize_t cell_id_show(struct device *device,
 	return ret;
 }
 
-static ssize_t disp_count_store(struct device *device,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct disp_display *dd_ptr = to_disp_display(device);
-	int ret = 0;
-
-	if (dd_ptr->intf_type == MI_INTF_DSI) {
-		return mi_dsi_display_set_disp_count(dd_ptr->display, (char *)buf);
-	} else {
-		DISP_ERROR("Unsupported display(%s intf)\n",
-			get_disp_intf_type_name(dd_ptr->intf_type));
-		ret = -EINVAL;
-	}
-
-	return ret ? ret : count;
-}
-
-static ssize_t disp_count_show(struct device *device,
-		struct device_attribute *attr, char *buf)
-{
-	struct disp_display *dd_ptr = to_disp_display(device);
-	if (dd_ptr->intf_type == MI_INTF_DSI) {
-		return mi_dsi_display_get_disp_count(dd_ptr->display, buf, PAGE_SIZE);
-	} else {
-		return snprintf(buf, PAGE_SIZE, "Unsupported display(%s intf)\n",
-			get_disp_intf_type_name(dd_ptr->intf_type));
-	}
-
-}
 
 static DEVICE_ATTR_RW(disp_param);
 static DEVICE_ATTR_RW(mipi_rw);
@@ -319,8 +319,8 @@ static DEVICE_ATTR_RO(dynamic_fps);
 static DEVICE_ATTR_RW(doze_brightness);
 static DEVICE_ATTR_RW(brightness_clone);
 static DEVICE_ATTR_RO(hw_vsync_info);
-static DEVICE_ATTR_RW(disp_count);
 static DEVICE_ATTR_RO(cell_id);
+static DEVICE_ATTR_RO(max_brightness_clone);
 
 static struct attribute *disp_feature_attrs[] = {
 	&dev_attr_disp_param.attr,
@@ -330,8 +330,8 @@ static struct attribute *disp_feature_attrs[] = {
 	&dev_attr_dynamic_fps.attr,
 	&dev_attr_doze_brightness.attr,
 	&dev_attr_brightness_clone.attr,
+	&dev_attr_max_brightness_clone.attr,
 	&dev_attr_hw_vsync_info.attr,
-	&dev_attr_disp_count.attr,
 	&dev_attr_cell_id.attr,
 	NULL
 };

@@ -313,6 +313,12 @@ int32_t cam_actuator_apply_request(struct cam_req_mgr_apply_request *apply)
 		}
 #endif
 
+#if defined(REDWOOD_CAM)
+		if ((a_ctrl->setting_apply_state == ACT_APPLY_SETTINGS_LATER) &&
+			(apply->request_id == 13)) {
+			usleep_range(3000, 3010);
+		}
+#endif
 		rc = cam_actuator_apply_settings(a_ctrl,
 			&a_ctrl->i2c_data.per_frame[request_id]);
 		if (rc < 0) {

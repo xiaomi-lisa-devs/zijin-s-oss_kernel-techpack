@@ -163,12 +163,13 @@ struct cam_isp_ctx_req {
 	struct cam_ctx_request               *base;
 	struct cam_hw_update_entry            cfg[CAM_ISP_CTX_CFG_MAX];
 	uint32_t                              num_cfg;
-	struct cam_hw_fence_map_entry         fence_map_out
-						[CAM_ISP_CTX_RES_MAX];
+	struct cam_hw_fence_map_entry         fence_map_out[CAM_ISP_CTX_RES_MAX];
 	uint32_t                              num_fence_map_out;
 	struct cam_hw_fence_map_entry         fence_map_in[CAM_ISP_CTX_RES_MAX];
 	uint32_t                              num_fence_map_in;
 	uint32_t                              num_acked;
+	uint32_t                              sync_enabled_id[CAM_ISP_CTX_RES_MAX];
+	bool 	                              early_bufdone_flag;
 	uint32_t                              num_deferred_acks;
 	uint32_t                  deferred_fence_map_index[CAM_ISP_CTX_RES_MAX];
 	int32_t                               bubble_report;
